@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Patrón PROXY para CU11.
+ * Patrón PROXY para CU11 y CU12.
  * Intercepta cada llamada a {@link ResultadoDAO} y verifica que el usuario en sesión
  * esté activo y sea Administrador antes de delegar en la base de datos.
  *

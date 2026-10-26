@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Apache POI (exportación a Excel del CU12) escribe mensajes internos con Log4j.
+     Esta configuración los apaga para que no se mezclen con los menús de la consola. -->
+<Configuration status="OFF">
+    <Loggers>
+        <Root level="OFF"/>
+    </Loggers>
+</Configuration>

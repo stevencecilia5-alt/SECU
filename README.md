@@ -75,10 +75,10 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
    * El orden calculado por SECU se guarda aparte (`ord_pre_calculado`) y nunca se sobrescribe con el orden CES (`ord_final_ces`).
    * Si ya hay un orden CES registrado, se puede reemplazar (pide confirmación).
 
----
-
-### Módulos Opcionales del Proyecto Global
-* **CU12 — Vista Consolidada y Reportes (Opcional):** Panel integral de consulta del ciclo evaluativo y exportación de resultados a planillas Excel.
+7. **CU12 — Vista Consolidada y Reportes (opción 7 del menú de postulaciones):**
+   * Muestra en una sola vista todas las postulaciones de la convocatoria elegida, ordenadas por puntaje consolidado, con los datos mínimos del CU12: fecha, postulante, correo, proyecto, grupo (y otro grupo, si tiene), tutor y co-tutor, estado, los dos evaluadores con el estado, puntaje y comentarios de cada evaluación, puntaje consolidado, juicio global, orden calculado, orden final CES y observación CES.
+   * Lo que todavía no existe (evaluadores, puntajes, órdenes) se muestra con `-`, sin impedir la consulta.
+   * Exporta la misma vista a una planilla de Excel (.xlsx) generada con Apache POI (ver la sección 10).
 
 ---
 
@@ -124,7 +124,7 @@ src/main/java/utec/secu/
 │   ├── EvaluadorExternoDAO.java                # DAO específico para perfil Evaluador Externo
 │   ├── PerfilUsuarioDAO.java                   # Interfaz base para DAOs de perfiles especializados
 │   ├── PostulacionDAO.java                     # DAO transaccional para postulaciones, filtros y catálogos
-│   ├── ResultadoDAO.java                       # DAO de puntaje consolidado, orden de prelación y orden CES (CU11)
+│   ├── ResultadoDAO.java                       # DAO de puntaje consolidado, orden de prelación y orden CES (CU11, CU12)
 │   └── UsuarioDAO.java                         # DAO de usuarios, autenticación y credenciales
 ├── excepciones/
 │   ├── AccesoDenegadoException.java            # Control de acceso y sesiones (lanzada por Proxies)
@@ -140,7 +140,7 @@ src/main/java/utec/secu/
 │   ├── Evaluacion.java                         # Asignación de un evaluador y su evaluación (CU08, CU09)
 │   ├── FiltroPostulacion.java                  # Enum con los filtros de búsqueda de CU07 (sin SQL)
 │   ├── Postulacion.java                        # Entidad del dominio de postulación
-│   ├── ResultadoPostulacion.java               # Postulación con sus evaluaciones, consolidado y órdenes (CU11)
+│   ├── ResultadoPostulacion.java               # Postulación con sus evaluaciones, consolidado y órdenes (CU11, CU12)
 │   ├── TipoDocumento.java                      # Tipo de documento que pide una convocatoria, obligatorio u opcional (CU06)
 │   └── Usuario.java                            # Entidad del dominio de usuario
 ├── seguridad/
@@ -148,14 +148,14 @@ src/main/java/utec/secu/
 │   ├── EvaluacionProxy.java                    # Proxy de autorización para CU08 (Administrador) y CU09 (evaluador asignado)
 │   ├── PostulacionProxy.java                   # Proxy de autorización para PostulacionDAO
 │   ├── ProxyBase.java                          # Clase abstracta con reglas comunes de sesión y rol
-│   ├── ResultadoProxy.java                     # Proxy de autorización para CU11 (Administrador)
+│   ├── ResultadoProxy.java                     # Proxy de autorización para CU11 y CU12 (Administrador)
 │   ├── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
 │   └── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
 ├── servicio/
 │   ├── DocumentoService.java                   # Facade de negocio para CU06 (validación del PDF, copia y reglas)
 │   ├── EvaluacionService.java                  # Facade de negocio para CU08 y CU09 (asignaciones, puntajes, cálculo)
 │   ├── PostulacionService.java                 # Facade de negocio para CU07 (fechas, estados, filtros)
-│   ├── ResultadoService.java                   # Facade de negocio para CU11 (armado y registro del orden CES)
+│   ├── ResultadoService.java                   # Facade de negocio para CU11 y CU12 (orden CES, exportación a Excel)
 │   ├── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
 │   └── UsuarioService.java                     # Facade de negocio para CU01 y CU03 (validaciones, altas)
 └── ui/
@@ -167,7 +167,7 @@ src/main/java/utec/secu/
     ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
     ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
     ├── MenuPrincipal.java                      # Menú principal con opciones según rol autenticado
-    ├── MenuResultados.java                     # Submenú interactivo para CU11 (orden final CES)
+    ├── MenuResultados.java                     # Submenús interactivos para CU11 (orden CES) y CU12 (vista consolidada)
     └── MenuUsuarios.java                       # Submenú interactivo para CU03 (gestión de usuarios)
 ```
 
@@ -177,7 +177,7 @@ src/main/java/utec/secu/
 
 ### Prerrequisitos
 * **Java Development Kit (JDK):** Versión 17 o 21.
-* **Apache Maven:** Versión 3.8 o superior. Descarga las dependencias del `pom.xml`: el driver de PostgreSQL y JLine (contraseñas con asteriscos).
+* **Apache Maven:** Versión 3.8 o superior. Descarga las dependencias del `pom.xml`: el driver de PostgreSQL, JLine (contraseñas con asteriscos), Apache POI (planilla de Excel del CU12) y Log4j (usado por POI).
 * **Motor de Base de Datos / Contenedor:** Docker Desktop **o** PostgreSQL 16+ instalado localmente.
 
 ---
@@ -220,7 +220,7 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ### Desde el IDE (IntelliJ IDEA)
 1. Abrir la carpeta raíz del proyecto en IntelliJ IDEA.
-2. Aguardar a que Maven sincronice las dependencias del `pom.xml`.
+2. Aguardar a que Maven sincronice las dependencias del `pom.xml`. Si el `pom.xml` cambió (por ejemplo, al agregar Apache POI), recargarlo desde el panel de Maven con **Reload All Maven Projects**.
 3. Navegar a `src/main/java/utec/secu/ui/Main.java`.
 4. Hacer clic derecho sobre la clase y seleccionar **Run 'Main.main()'**.
 
@@ -251,13 +251,15 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ---
 
-## 10. Orden Final CES (CU11): reglas
+## 10. Orden Final CES y Reportes (CU11 y CU12): reglas
 
-* **Puntaje consolidado y orden calculado (CU10):** el CU10 no es un módulo del equipo, pero el CU11 necesita su resultado. Por eso, cuando una postulación pasa a `Evaluada` (las dos evaluaciones `Completada`), SECU calcula y guarda en la misma transacción su **puntaje consolidado** = (Evaluación 1 + Evaluación 2) / 2, y vuelve a numerar el **orden calculado** de su convocatoria: de mayor a menor puntaje consolidado y, si empatan, alfabético por nombre del postulante.
+* **Puntaje consolidado y orden calculado (CU10):** el CU10 no es un módulo del equipo, pero el CU11 y el CU12 necesitan su resultado. Por eso, cuando una postulación pasa a `Evaluada` (las dos evaluaciones `Completada`), SECU calcula y guarda en la misma transacción su **puntaje consolidado** = (Evaluación 1 + Evaluación 2) / 2, y vuelve a numerar el **orden calculado** de su convocatoria: de mayor a menor puntaje consolidado y, si empatan, alfabético por nombre del postulante.
 * **Postulaciones evaluadas después del orden CES:** quedan sin orden calculado y el CU11 avisa que hay que registrar de nuevo el orden CES; al hacerlo, SECU recalcula el orden de toda la lista.
 * **Observaciones del orden CES:** la postulación que movió el CES guarda el motivo escrito; las que quedan corridas reciben una observación automática, y la que termina en su orden calculado no lleva, salvo la que el CES le agregue con "Agregar una observación" (esa se suma a cualquiera de las otras).
 * **Registrar de nuevo el orden CES:** se parte del orden calculado nuevo; el puesto CES anterior se muestra como referencia.
 * **Resultado de cada postulación:** el resultado definitivo (`Aprobada` o `Rechazada`) se registra con la opción 4 del menú de postulaciones (cambio de estado de CU07), que solo lo permite desde `Evaluada`.
+* **Exportación a Excel (CU12):** genera una planilla `.xlsx` en la carpeta `reportes/` (en `.gitignore`) con la librería Apache POI (`poi-ooxml` en el `pom.xml`).
+* **Mensajes de POI:** `log4j-core` y `src/main/resources/log4j2.xml` apagan los mensajes internos de POI en la consola.
 
 ---
 
@@ -265,7 +267,7 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 | Rol | Correo Electrónico | Contraseña Inicial | Comportamiento en Consola |
 | :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos y CU11 Orden final CES) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
+| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos, CU11 Orden final CES y CU12 Vista consolidada) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
 | **Usuario Nuevo (Alta CU03)** | *(Correo asignado)* | *(Clave temporal de 8 caracteres)* | Acceso inicial forzado a cambio de contraseña (`req_cam_clave = TRUE`). La clave temporal se consulta en `correos_simulados/bandeja_salida.txt`. |
 
 ---

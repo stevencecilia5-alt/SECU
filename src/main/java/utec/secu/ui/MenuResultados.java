@@ -9,6 +9,8 @@ import utec.secu.modelo.ResultadoPostulacion;
 import utec.secu.modelo.Usuario;
 import utec.secu.servicio.ResultadoService;
 
+import java.nio.file.Path;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,9 +18,11 @@ import java.util.Map;
 import java.util.Scanner;
 
 /**
- * Menú de consola de CU11 (registro del orden final CES): opción 6 del menú de postulaciones.
+ * Menús de consola de CU11 (registro del orden final CES) y CU12 (vista consolidada y
+ * reporte): opciones 6 y 7 del menú de postulaciones. Los dos trabajan sobre una
+ * convocatoria, por eso comparten la elección de la convocatoria.
  * <p>
- * Solo lee datos y muestra resultados; las reglas de negocio están en
+ * Solo leen datos y muestran resultados; las reglas de negocio están en
  * {@link ResultadoService} y el control de acceso en el Proxy.
  * </p>
  *
@@ -26,6 +30,8 @@ import java.util.Scanner;
  * @version 1.0
  */
 public class MenuResultados extends MenuBase {
+
+    private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final ResultadoService servicio;
 
@@ -237,6 +243,62 @@ public class MenuResultados extends MenuBase {
     }
 
     // =========================================================================
+    // 2. VISTA CONSOLIDADA Y REPORTE (CU12)
+    // =========================================================================
+
+    /**
+     * Muestra la vista consolidada de una convocatoria y ofrece exportarla a Excel.
+     * Si algo falla, el mensaje lo muestra el menú de postulaciones.
+     */
+    public void mostrarVistaConsolidada() {
+        System.out.println("\n--- Vista consolidada y reportes ---");
+        Map<Long, String> convocatorias = servicio.listarConvocatorias(sesion);
+        long id = elegirConvocatoria(convocatorias);
+        if (id == 0) {
+            return;
+        }
+        List<ResultadoPostulacion> resultados = servicio.listarResultados(sesion, id);
+        System.out.println("\n=== Vista consolidada - " + convocatorias.get(id) + " ===");
+        System.out.println(resultados.size() + " postulaciones, ordenadas por puntaje consolidado.");
+        for (ResultadoPostulacion r : resultados) {
+            imprimirResultado(r);
+        }
+        if (confirmar("\n¿Querés exportar esta vista a Excel? (s/n): ")) {
+            Path archivo = ResultadoService.exportarExcel(convocatorias.get(id), id, resultados);
+            System.out.println("Archivo de Excel generado: " + archivo);
+        }
+    }
+
+    private void imprimirResultado(ResultadoPostulacion r) {
+        System.out.println("\nPostulación " + r.getIdPostulacion() + " | " + r.getEstado().getEtiqueta()
+                + " | Fecha de postulación: " + r.getFecSolicitud().format(FORMATO_FECHA_HORA));
+        System.out.println("  Postulante:      " + r.getPostulante() + " (" + r.getCorreo() + ")");
+        System.out.println("  Proyecto:        " + r.getProyecto());
+        System.out.println("  Grupo:           " + r.getGrupo());
+        System.out.println("  Tutor:           " + texto(r.getTutor()));
+        System.out.println("  Co-tutor:        " + texto(r.getCoTutor()));
+        imprimirEvaluador(1, r.getEvaluacion(1));
+        imprimirEvaluador(2, r.getEvaluacion(2));
+        System.out.println("  Consolidado:     " + MenuAsignacion.formatoPuntaje(r.getPuntajeConsolidado())
+                + "   Orden calculado: " + numero(r.getOrdenCalculado())
+                + "   Orden final CES: " + numero(r.getOrdenCes()));
+        System.out.println("  Observación CES: " + texto(r.getObservacionCes()));
+        System.out.println("  Juicio global:   " + texto(r.getJuicioGlobal()));
+    }
+
+    private void imprimirEvaluador(int numero, Evaluacion e) {
+        if (e == null) {
+            System.out.println("  Evaluador " + numero + ":     (sin asignar)");
+            return;
+        }
+        System.out.println("  Evaluador " + numero + ":     " + e.getNombreEvaluador() + " - " + e.getEstado()
+                + " - Puntaje " + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()));
+        if (e.getComentario() != null) {
+            System.out.println("                   Comentarios: " + e.getComentario());
+        }
+    }
+
+    // =========================================================================
     // AUXILIARES DE CONSOLA
     // =========================================================================
 
@@ -260,6 +322,10 @@ public class MenuResultados extends MenuBase {
 
     private static String numero(Integer valor) {
         return valor == null ? "-" : String.valueOf(valor);
+    }
+
+    private static String texto(String valor) {
+        return valor == null ? "-" : valor;
     }
 
     private static String recortar(String texto, int maximo) {

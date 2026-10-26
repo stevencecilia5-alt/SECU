@@ -3,22 +3,39 @@ package utec.secu.servicio;
 import utec.secu.excepciones.DatoInvalidoException;
 import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
+import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.ResultadoPostulacion;
 import utec.secu.modelo.Usuario;
 import utec.secu.seguridad.ResultadoProxy;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Patrón FACADE para CU11 (registro del orden final CES).
+ * Patrón FACADE para CU11 (registro del orden final CES) y CU12 (vista consolidada y reporte).
  * <p>
- * Arma el orden final CES a partir de la lista de prelación. El Administrador mueve una
+ * CU11: arma el orden final CES a partir de la lista de prelación. El Administrador mueve una
  * postulación a otro puesto y las demás se corren; la movida lleva el motivo del CES y las que
  * quedan corridas reciben una observación automática. El CES también puede agregar una
- * observación a cualquier postulación, aunque quede en su orden calculado.
+ * observación a cualquier postulación, aunque quede en su orden calculado. CU12: arma la vista de una convocatoria
+ * y la exporta a una planilla de Excel (.xlsx) con la librería Apache POI.
  * </p>
  * <p>
  * Si falla la base de datos, cada método atrapa la {@code SQLException} del Proxy y lanza
@@ -30,11 +47,29 @@ import java.util.Map;
  */
 public class ResultadoService {
 
+    /** Carpeta donde se guardan los reportes, relativa a donde se ejecuta la aplicación. */
+    public static final String CARPETA_REPORTES = "reportes";
+
+    public static final String MSG_SIN_POSTULACIONES = "La convocatoria no tiene postulaciones.";
     public static final String MSG_SIN_PRELACION =
             "La convocatoria no tiene postulaciones Evaluadas: todavía no hay lista de prelación.";
     public static final String MSG_POSICION = "La posición no es válida: debe ser un número entero de 1 a ";
     public static final String MSG_OBSERVACION =
             "La observación es obligatoria: escribí el motivo de la decisión del CES.";
+    public static final String MSG_FALLA_EXPORTAR = "No se pudo generar el archivo para Excel. Intentá nuevamente.";
+
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter FORMATO_ARCHIVO = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+    /** Ancho máximo de una columna de Excel: 60 caracteres (POI mide el ancho en 1/256 de carácter). */
+    private static final int ANCHO_MAXIMO = 60 * 256;
+    private static final String[] COLUMNAS = {
+        "ID postulación", "Fecha de postulación", "Postulante", "Correo electrónico", "Proyecto",
+        "Grupo de investigación", "Tutor", "Co-tutor", "Estado de la postulación",
+        "Evaluador 1", "Estado evaluación 1", "Puntaje evaluador 1", "Comentarios evaluador 1",
+        "Evaluador 2", "Estado evaluación 2", "Puntaje evaluador 2", "Comentarios evaluador 2",
+        "Puntaje final consolidado", "Juicio global", "Orden de prelación calculado", "Orden final CES",
+        "Observación CES"
+    };
 
     private final ResultadoProxy proxy;
 
@@ -50,6 +85,22 @@ public class ResultadoService {
     public Map<Long, String> listarConvocatorias(Usuario sesion) {
         try {
             return proxy.listarConvocatorias(sesion);
+        } catch (SQLException e) {
+            throw new ErrorDeDatosException(e);
+        }
+    }
+
+    /**
+     * @return Todas las postulaciones de la convocatoria, ordenadas por puntaje consolidado (CU12).
+     * @throws OperacionNoPermitidaException Si la convocatoria no tiene postulaciones.
+     */
+    public List<ResultadoPostulacion> listarResultados(Usuario sesion, long idConvocatoria) {
+        try {
+            List<ResultadoPostulacion> resultados = proxy.listarResultados(sesion, idConvocatoria);
+            if (resultados.isEmpty()) {
+                throw new OperacionNoPermitidaException(MSG_SIN_POSTULACIONES);
+            }
+            return resultados;
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
         }
@@ -202,6 +253,122 @@ public class ResultadoService {
             proxy.registrarOrdenCes(sesion, idConvocatoria, orden);
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
+        }
+    }
+
+    // =========================================================================
+    // 3. REPORTE EN EXCEL (CU12)
+    // =========================================================================
+
+    /**
+     * Guarda la vista consolidada en {@code reportes/} como planilla de Excel (.xlsx), con Apache POI:
+     * la convocatoria, los títulos y una fila por postulación.
+     *
+     * @return La ruta completa del archivo generado.
+     * @throws OperacionNoPermitidaException Si no se pudo escribir el archivo.
+     */
+    public static Path exportarExcel(String convocatoria, long idConvocatoria, List<ResultadoPostulacion> resultados) {
+        Path archivo = Paths.get(CARPETA_REPORTES, "vista_consolidada_convocatoria_" + idConvocatoria + "_"
+                + LocalDateTime.now().format(FORMATO_ARCHIVO) + ".xlsx");
+        try (Workbook libro = new XSSFWorkbook()) {
+            Sheet hoja = libro.createSheet("Vista consolidada");
+
+            // Estilos: títulos en negrita y puntajes con dos decimales
+            Font negrita = libro.createFont();
+            negrita.setBold(true);
+            CellStyle estiloTitulo = libro.createCellStyle();
+            estiloTitulo.setFont(negrita);
+            CellStyle estiloPuntaje = libro.createCellStyle();
+            estiloPuntaje.setDataFormat(libro.createDataFormat().getFormat("0.00"));
+
+            // Fila 3: títulos de las columnas
+            Row filaTitulos = hoja.createRow(2);
+            for (int i = 0; i < COLUMNAS.length; i++) {
+                Cell celda = filaTitulos.createCell(i);
+                celda.setCellValue(COLUMNAS[i]);
+                celda.setCellStyle(estiloTitulo);
+            }
+
+            // Una fila por postulación
+            int numeroFila = 3;
+            for (ResultadoPostulacion r : resultados) {
+                Row fila = hoja.createRow(numeroFila);
+                numeroFila++;
+                escribirNumero(fila, 0, r.getIdPostulacion(), null);
+                escribirTexto(fila, 1, r.getFecSolicitud() == null ? null : r.getFecSolicitud().format(FORMATO_FECHA));
+                escribirTexto(fila, 2, r.getPostulante());
+                escribirTexto(fila, 3, r.getCorreo());
+                escribirTexto(fila, 4, r.getProyecto());
+                escribirTexto(fila, 5, r.getGrupo());
+                escribirTexto(fila, 6, r.getTutor());
+                escribirTexto(fila, 7, r.getCoTutor());
+                escribirTexto(fila, 8, r.getEstado().getEtiqueta());
+                escribirEvaluacion(fila, 9, r.getEvaluacion(1), estiloPuntaje);
+                escribirEvaluacion(fila, 13, r.getEvaluacion(2), estiloPuntaje);
+                escribirNumero(fila, 17, r.getPuntajeConsolidado(), estiloPuntaje);
+                escribirTexto(fila, 18, r.getJuicioGlobal());
+                escribirNumero(fila, 19, r.getOrdenCalculado(), null);
+                escribirNumero(fila, 20, r.getOrdenCes(), null);
+                escribirTexto(fila, 21, r.getObservacionCes());
+            }
+
+            // Cada columna se ajusta a su texto, sin pasar de 60 caracteres
+            for (int i = 0; i < COLUMNAS.length; i++) {
+                hoja.autoSizeColumn(i);
+                if (hoja.getColumnWidth(i) > ANCHO_MAXIMO) {
+                    hoja.setColumnWidth(i, ANCHO_MAXIMO);
+                }
+            }
+            hoja.createFreezePane(0, 3);
+
+            // Fila 1: la convocatoria, después de ajustar los anchos para no ensanchar la columna B
+            Row filaConvocatoria = hoja.createRow(0);
+            Cell celdaConvocatoria = filaConvocatoria.createCell(0);
+            celdaConvocatoria.setCellValue("Convocatoria");
+            celdaConvocatoria.setCellStyle(estiloTitulo);
+            escribirTexto(filaConvocatoria, 1, convocatoria);
+
+            Files.createDirectories(archivo.getParent());
+            try (OutputStream salida = Files.newOutputStream(archivo)) {
+                libro.write(salida);
+            }
+        } catch (IOException e) {
+            throw new OperacionNoPermitidaException(MSG_FALLA_EXPORTAR);
+        }
+        return archivo.toAbsolutePath();
+    }
+
+    /** Escribe las 4 columnas de un evaluador; quedan vacías si la postulación todavía no lo tiene. */
+    private static void escribirEvaluacion(Row fila, int primeraColumna, Evaluacion e, CellStyle estiloPuntaje) {
+        if (e == null) {
+            return;
+        }
+        escribirTexto(fila, primeraColumna, e.getNombreEvaluador());
+        escribirTexto(fila, primeraColumna + 1, e.getEstado());
+        escribirNumero(fila, primeraColumna + 2, e.getPuntajeTotal(), estiloPuntaje);
+        escribirTexto(fila, primeraColumna + 3, e.getComentario());
+    }
+
+    /** Escribe un texto en la celda; si es {@code null}, la celda queda vacía. */
+    private static void escribirTexto(Row fila, int columna, String texto) {
+        if (texto != null) {
+            fila.createCell(columna).setCellValue(texto);
+        }
+    }
+
+    /**
+     * Escribe un número en la celda, para que Excel pueda ordenar y calcular con él;
+     * si es {@code null}, la celda queda vacía.
+     *
+     * @param estilo Formato de la celda (por ejemplo, dos decimales), o {@code null} para el formato general.
+     */
+    private static void escribirNumero(Row fila, int columna, Number valor, CellStyle estilo) {
+        if (valor != null) {
+            Cell celda = fila.createCell(columna);
+            celda.setCellValue(valor.doubleValue());
+            if (estilo != null) {
+                celda.setCellStyle(estilo);
+            }
         }
     }
 }

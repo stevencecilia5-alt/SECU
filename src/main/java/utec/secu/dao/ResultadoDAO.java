@@ -1,6 +1,7 @@
 package utec.secu.dao;
 
 import utec.secu.conexion.ConexionBD;
+import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.ResultadoPostulacion;
 
@@ -8,13 +9,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Patrón DAO: resultados de las convocatorias (CU11, y el cálculo de CU10 que necesita).
+ * Patrón DAO: resultados de las convocatorias (CU11 y CU12, y el cálculo de CU10 que necesitan).
  * <p>
  * Lee la situación de cada postulación con sus evaluaciones y escribe en {@code postulaciones}
  * el puntaje consolidado, el orden calculado por SECU ({@code ord_pre_calculado}) y el orden
@@ -55,10 +57,19 @@ public class ResultadoDAO {
      */
     public List<ResultadoPostulacion> listarResultados(long idConvocatoria) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
-        String sql = "SELECT p.id_postulacion, p.pun_consolidado, p.ord_pre_calculado, p.ord_final_ces, p.obs_ces, "
-                + "pt.nombre, pt.apellido "
+        String sql = "SELECT p.id_postulacion, p.fec_solicitud, p.nom_proyecto, p.gru_investigacion, "
+                + "p.otr_gru_investigacion, p.estado, "
+                + "p.pun_consolidado, p.ord_pre_calculado, p.ord_final_ces, p.obs_ces, p.jui_global, "
+                + "pt.nombre, pt.apellido, pt.correo, t.nombre AS tutor_nombre, t.apellido AS tutor_apellido, "
+                + "ct.nombre AS cotutor_nombre, ct.apellido AS cotutor_apellido "
                 + "FROM postulaciones p "
                 + "JOIN postulantes pt ON pt.id_postulante = p.id_postulante "
+                + "LEFT JOIN tuto_utec_postulacion tp ON tp.id_postulacion = p.id_postulacion "
+                + "AND tp.rol_tutor = 'Tutor principal' "
+                + "LEFT JOIN tuto_utec t ON t.id_tuto_utec = tp.id_tuto_utec "
+                + "LEFT JOIN tuto_utec_postulacion cp ON cp.id_postulacion = p.id_postulacion "
+                + "AND cp.rol_tutor = 'Co-tutor' "
+                + "LEFT JOIN tuto_utec ct ON ct.id_tuto_utec = cp.id_tuto_utec "
                 + "WHERE p.id_convocatoria = ?" + ORDEN_PRELACION;
         Map<Long, ResultadoPostulacion> resultados = new LinkedHashMap<>();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -183,8 +194,19 @@ public class ResultadoDAO {
     }
 
     private ResultadoPostulacion mapear(ResultSet rs) throws SQLException {
+        Timestamp fecha = rs.getTimestamp("fec_solicitud");
+        String tutor = rs.getString("tutor_nombre") == null ? null
+                : rs.getString("tutor_nombre") + " " + rs.getString("tutor_apellido");
+        String otroGrupo = rs.getString("otr_gru_investigacion");
+        String grupo = rs.getString("gru_investigacion") + (otroGrupo == null ? "" : " / " + otroGrupo);
         ResultadoPostulacion r = new ResultadoPostulacion(rs.getLong("id_postulacion"),
-                rs.getString("nombre") + " " + rs.getString("apellido"));
+                fecha == null ? null : fecha.toLocalDateTime(),
+                rs.getString("nombre") + " " + rs.getString("apellido"), rs.getString("correo"),
+                rs.getString("nom_proyecto"), grupo, tutor,
+                EstadoPostulacion.desdeBD(rs.getString("estado")));
+        if (rs.getString("cotutor_nombre") != null) {
+            r.setCoTutor(rs.getString("cotutor_nombre") + " " + rs.getString("cotutor_apellido"));
+        }
         double consolidado = rs.getDouble("pun_consolidado");
         r.setPuntajeConsolidado(rs.wasNull() ? null : consolidado);
         int calculado = rs.getInt("ord_pre_calculado");
@@ -192,6 +214,7 @@ public class ResultadoDAO {
         int ces = rs.getInt("ord_final_ces");
         r.setOrdenCes(rs.wasNull() ? null : ces);
         r.setObservacionCes(rs.getString("obs_ces"));
+        r.setJuicioGlobal(rs.getString("jui_global"));
         return r;
     }
 }
