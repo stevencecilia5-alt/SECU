@@ -17,6 +17,7 @@ public class EvaluadorExternoDAO implements PerfilUsuarioDAO {
      * @param idUsuario Identificador del usuario al que se asociará el perfil.
      * @throws SQLException Si ocurre un error al preparar o ejecutar la consulta SQL.
      */
+    @Override
     public void crearPerfil(Connection con, long idUsuario) throws SQLException {
         String sql = "INSERT INTO eval_externos (id_usuario) VALUES (?)";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -24,4 +25,4 @@ public class EvaluadorExternoDAO implements PerfilUsuarioDAO {
             ps.executeUpdate();
         }
     }
-}
+}

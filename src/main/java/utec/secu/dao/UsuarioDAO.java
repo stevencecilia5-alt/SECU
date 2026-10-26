@@ -130,6 +130,15 @@ public class UsuarioDAO {
         }
     }
 
+    /** @return El usuario con ese correo (sin distinguir mayúsculas), o {@code null} si no existe (CU08). */
+    public Usuario buscarPorCorreo(String correo) throws SQLException {
+        Connection con = ConexionBD.getInstancia().getConnection();
+        try (PreparedStatement ps = con.prepareStatement(SELECT_USUARIO + "WHERE lower(u.correo) = lower(?)")) {
+            ps.setString(1, correo);
+            return leerUno(ps);
+        }
+    }
+
     /** @return {@code true} si ya existe un usuario con esa cédula. */
     public boolean existeCi(String ci) throws SQLException {
         return existe("SELECT 1 FROM usuarios WHERE ci = ?", ci, null);

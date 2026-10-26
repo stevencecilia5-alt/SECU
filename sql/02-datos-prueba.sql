@@ -13,22 +13,22 @@ BEGIN;
 -- ---------- 1. Usuarios evaluadores ----------
 -- Evaluador con evaluaciones en los tres estados
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('37125485', 'eval1@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Martín', 'Rodríguez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+VALUES ('37125485', 'eval1@utec.edu.uy', '2"w''u$YuC=BPA', 'Martín', 'Rodríguez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador; tiene la evaluación En proceso
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('39451204', 'eval2@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Lucía', 'Fernández', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+VALUES ('39451204', 'eval2@utec.edu.uy', '2"w''u$YuC=BPA', 'Lucía', 'Fernández', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador; tercer evaluador disponible
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('40873164', 'eval3@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Diego', 'Silva', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+VALUES ('40873164', 'eval3@utec.edu.uy', '2"w''u$YuC=BPA', 'Diego', 'Silva', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador Inactivo
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('35988423', 'eval4@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Sofía', 'Pereira', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
+VALUES ('35988423', 'eval4@utec.edu.uy', '2"w''u$YuC=BPA', 'Sofía', 'Pereira', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
 -- Cédula y correo ya registrados (CU03)
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('38765418', 'ana.gomez@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Ana', 'Gómez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+VALUES ('38765418', 'ana.gomez@utec.edu.uy', '2"w''u$YuC=BPA', 'Ana', 'Gómez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
 -- Usuario Inactivo para restablecer y reactivar (CU03)
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('36543286', 'carla.diaz@utec.edu.uy', 'Qtr}ji{w;:=B.', 'Carla', 'Díaz', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
+VALUES ('36543286', 'carla.diaz@utec.edu.uy', '2"w''u$YuC=BPA', 'Carla', 'Díaz', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
 
 INSERT INTO Eval_Externos (id_usuario)
 SELECT id_usuario FROM Usuarios WHERE rol = 'Evaluador externo';
@@ -40,7 +40,7 @@ SELECT id_usuario, '099123456' FROM Usuarios WHERE correo = 'eval1@utec.edu.uy';
 -- La primera tiene postulaciones en todos los estados; la segunda no tiene ninguna (CU12).
 INSERT INTO Convocatorias (id_usuario, nom_convocatoria, fec_apertura, fec_cierre, ani_convocatoria,
                            descripcion, can_becas, tip_beca, estado)
-SELECT id_usuario, 'Becas de Iniciacion a la Investigacion 2026', '2026-08-15 00:00', '2026-09-30 23:59', 2026, 'Convocatoria de prueba con postulaciones en todos los estados.', 10, 'Iniciacion a la investigacion', 'Cerrada'
+SELECT id_usuario, 'Becas de Iniciación a la Investigación 2026', '2026-08-15 00:00', '2026-09-30 23:59', 2026, 'Convocatoria de prueba con postulaciones en todos los estados.', 10, 'Iniciacion a la investigacion', 'Cerrada'
 FROM Usuarios WHERE correo = 'admin@secu.edu.uy';
 INSERT INTO Convocatorias (id_usuario, nom_convocatoria, fec_apertura, fec_cierre, ani_convocatoria,
                            descripcion, can_becas, tip_beca, estado)
@@ -49,14 +49,14 @@ FROM Usuarios WHERE correo = 'admin@secu.edu.uy';
 
 -- Documentos requeridos por la primera convocatoria (TRUE = obligatorio).
 INSERT INTO Docu_Tipo_Convocatorias (id_docu_tipo, id_convocatoria, obligatorio)
-SELECT d.id_docu_tipo, c.id_convocatoria, d.nom_tip_documento IN ('Plan de trabajo', 'Presupuesto', 'Escolaridad de grado', 'CVuy del postulante', 'CVuy del tutor', 'Carta aval del tutor', 'Carta de motivacion')
+SELECT d.id_docu_tipo, c.id_convocatoria, d.nom_tip_documento IN ('Plan de trabajo', 'Presupuesto', 'Escolaridad de grado', 'CVuy del postulante', 'CVuy del tutor', 'Carta aval del tutor', 'Carta de motivación')
 FROM Docu_Tipos d CROSS JOIN Convocatorias c
-WHERE c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026';
+WHERE c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026';
 
 -- ---------- 3. Tutores UTEC ----------
 INSERT INTO Tuto_Utec (cor_utec, nombre, apellido, dep_area) VALUES
-    ('maria.suarez@utec.edu.uy', 'María', 'Suárez', 'Tecnologias de la Informacion'),
-    ('jorge.benitez@utec.edu.uy', 'Jorge', 'Benítez', 'Energias Renovables'),
+    ('maria.suarez@utec.edu.uy', 'María', 'Suárez', 'Tecnologías de la Información'),
+    ('jorge.benitez@utec.edu.uy', 'Jorge', 'Benítez', 'Energías Renovables'),
     ('paula.castro@utec.edu.uy', 'Paula', 'Castro', 'Ciencias Agrarias y Agroambientales'),
     ('andres.nunez@utec.edu.uy', 'Andrés', 'Núñez', 'Procesos Industriales');
 
@@ -87,112 +87,112 @@ INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Monitoreo de calidad de agua con sensores IoT',
        'Internet de las cosas', 12, 'Sistemas embebidos', '2026-09-01 10:15', 'Registrada'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'valentina.acosta@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Tecnologias de la Informacion' AND s.nom_sede = 'Norte';
+WHERE pt.correo = 'valentina.acosta@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Tecnologías de la Información' AND s.nom_sede = 'Norte';
 -- P02: Registrada
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Eficiencia de paneles solares en climas templados',
-       'Energia solar', 6, 'Energias renovables', '2026-09-03 11:40', 'Registrada'
+       'Energía solar', 6, 'Energías renovables', '2026-09-03 11:40', 'Registrada'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'tomas.mendez@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Energias Renovables' AND s.nom_sede = 'Centro-Sur';
+WHERE pt.correo = 'tomas.mendez@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Energías Renovables' AND s.nom_sede = 'Centro-Sur';
 -- P03: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Riego de precision en cultivos de arroz',
-       'Agricultura de precision', 12, 'Agroambiente', '2026-09-04 09:05', 'En revision'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Riego de precisión en cultivos de arroz',
+       'Agricultura de precisión', 12, 'Agroambiente', '2026-09-04 09:05', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'camila.rios@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'camila.rios@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Ciencias Agrarias y Agroambientales' AND s.nom_sede = 'Este';
 -- P04: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Almacenamiento de energia eolica',
-       'Energia eolica', 9, 'Energias renovables', '2026-09-05 16:20', 'En revision'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Almacenamiento de energía eólica',
+       'Energía eólica', 9, 'Energías renovables', '2026-09-05 16:20', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'bruno.sosa@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Energias Renovables' AND s.nom_sede = 'Norte';
+WHERE pt.correo = 'bruno.sosa@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Energías Renovables' AND s.nom_sede = 'Norte';
 -- P05: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Optimizacion de procesos de envasado',
-       'Automatizacion industrial', 6, 'Procesos industriales', '2026-09-08 14:00', 'En revision'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Optimización de procesos de envasado',
+       'Automatización industrial', 6, 'Procesos industriales', '2026-09-08 14:00', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'florencia.vega@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'florencia.vega@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Procesos Industriales' AND s.nom_sede = 'Este';
 -- P06: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Trazabilidad de ganado con blockchain',
-       'Cadenas de bloques', 12, 'Sistemas de informacion', '2026-09-09 08:30', 'En revision'
+       'Cadenas de bloques', 12, 'Sistemas de información', '2026-09-09 08:30', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'matias.cabrera@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Tecnologias de la Informacion' AND s.nom_sede = 'Suroeste';
+WHERE pt.correo = 'matias.cabrera@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Tecnologías de la Información' AND s.nom_sede = 'Suroeste';
 -- P07: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Bioinsumos para suelos degradados',
        'Suelos', 9, 'Agroambiente', '2026-09-10 17:45', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'gabriela.duarte@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'gabriela.duarte@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Ciencias Agrarias y Agroambientales' AND s.nom_sede = 'Centro-Sur';
 -- P08: No elegible
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Aplicacion movil para turismo rural',
-       'Desarrollo movil', 6, 'Sistemas de informacion', '2026-09-02 12:00', 'No elegible'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Aplicación móvil para turismo rural',
+       'Desarrollo móvil', 6, 'Sistemas de información', '2026-09-02 12:00', 'No elegible'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'joaquin.romero@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Tecnologias de la Informacion' AND s.nom_sede = 'Norte';
+WHERE pt.correo = 'joaquin.romero@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Tecnologías de la Información' AND s.nom_sede = 'Norte';
 -- P09: Evaluada
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado, pun_consolidado, ord_pre_calculado, jui_global)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Hidrogeno verde a partir de biomasa',
-       'Hidrogeno verde', 12, 'Energias renovables', '2026-09-11 10:00', 'Evaluada', 4.50, 1, 'Propuesta solida, con alto impacto para el grupo receptor.'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Hidrógeno verde a partir de biomasa',
+       'Hidrógeno verde', 12, 'Energías renovables', '2026-09-11 10:00', 'Evaluada', 4.50, 1, 'Propuesta sólida, con alto impacto para el grupo receptor.'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'sofia.olivera@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Energias Renovables' AND s.nom_sede = 'Centro-Sur';
+WHERE pt.correo = 'sofia.olivera@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Energías Renovables' AND s.nom_sede = 'Centro-Sur';
 -- P10: Evaluada
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado, pun_consolidado, ord_pre_calculado, jui_global)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Mantenimiento predictivo de motores',
        'Industria 4.0', 12, 'Procesos industriales', '2026-09-12 13:30', 'Evaluada', 3.50, 3, 'Buen plan de trabajo, con antecedentes del postulante limitados.'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'nicolas.ferreira@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'nicolas.ferreira@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Procesos Industriales' AND s.nom_sede = 'Este';
 -- P11: Evaluada
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado, pun_consolidado, ord_pre_calculado, jui_global)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Riego deficitario en vid',
-       'Agricultura de precision', 6, 'Agroambiente', '2026-09-14 15:10', 'Evaluada', 3.50, 2, 'Propuesta viable; conviene ajustar el cronograma.'
+       'Agricultura de precisión', 6, 'Agroambiente', '2026-09-14 15:10', 'Evaluada', 3.50, 2, 'Propuesta viable; conviene ajustar el cronograma.'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'lucas.bentancor@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'lucas.bentancor@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Ciencias Agrarias y Agroambientales' AND s.nom_sede = 'Suroeste';
 -- P12: En evaluacion
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Deteccion de fraudes con aprendizaje automatico',
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Detección de fraudes con aprendizaje automático',
        'Inteligencia artificial', 12, 'Ciencia de datos', '2026-09-15 18:00', 'En evaluacion'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'martina.silveira@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Tecnologias de la Informacion' AND s.nom_sede = 'Norte';
+WHERE pt.correo = 'martina.silveira@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Tecnologías de la Información' AND s.nom_sede = 'Norte';
 -- P13: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
 SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Gemelo digital de una planta lechera',
        'Industria 4.0', 9, 'Procesos industriales', '2026-09-07 10:50', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'emilia.cardozo@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
+WHERE pt.correo = 'emilia.cardozo@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
   AND d.nom_departamento = 'Departamento de Procesos Industriales' AND s.nom_sede = 'Centro-Sur';
 -- P14: En revision
 INSERT INTO Postulaciones (id_postulante, id_convocatoria, id_dept_academico, id_sede, nom_proyecto,
                            lin_investigacion, can_meses, gru_investigacion, fec_solicitud, estado)
-SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Microrredes electricas rurales',
-       'Energia solar', 12, 'Energias renovables', '2026-09-20 09:40', 'En revision'
+SELECT pt.id_postulante, c.id_convocatoria, d.id_dept_academico, s.id_sede, 'Microrredes eléctricas rurales',
+       'Energía solar', 12, 'Energías renovables', '2026-09-20 09:40', 'En revision'
 FROM Postulantes pt, Convocatorias c, Dept_Academicos d, Sedes s
-WHERE pt.correo = 'federico.martinez@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciacion a la Investigacion 2026'
-  AND d.nom_departamento = 'Departamento de Energias Renovables' AND s.nom_sede = 'Este';
+WHERE pt.correo = 'federico.martinez@gmail.com' AND c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026'
+  AND d.nom_departamento = 'Departamento de Energías Renovables' AND s.nom_sede = 'Este';
 
 -- ---------- 6. Tutores de cada postulacion ----------
 INSERT INTO Tuto_Utec_Postulacion (id_tuto_utec, id_postulacion, rol_tutor)
@@ -289,7 +289,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'camila.rios@
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P03/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'camila.rios@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'camila.rios@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P09/plan_de_trabajo.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -317,7 +317,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'sofia.oliver
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P09/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'sofia.olivera@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'sofia.olivera@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P10/plan_de_trabajo.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -345,7 +345,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'nicolas.ferr
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P10/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'nicolas.ferreira@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'nicolas.ferreira@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P11/plan_de_trabajo.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -373,7 +373,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'lucas.bentan
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P11/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'lucas.bentancor@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'lucas.bentancor@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P12/plan_de_trabajo.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -401,7 +401,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'martina.silv
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P12/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'martina.silveira@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'martina.silveira@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P01/plan_de_trabajo.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -429,7 +429,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'valentina.ac
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P01/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'valentina.acosta@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'valentina.acosta@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P01/otros_documentos_adicionales_1.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -473,7 +473,7 @@ WHERE d.nom_tip_documento = 'Carta aval del tutor' AND pt.correo = 'tomas.mendez
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P02/carta_de_motivacion.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
-WHERE d.nom_tip_documento = 'Carta de motivacion' AND pt.correo = 'tomas.mendez@gmail.com';
+WHERE d.nom_tip_documento = 'Carta de motivación' AND pt.correo = 'tomas.mendez@gmail.com';
 INSERT INTO Docu_Adjuntos (id_docu_tipo, id_postulacion, rut_archivo)
 SELECT d.id_docu_tipo, p.id_postulacion, 'documentos/P02/otros_documentos_adicionales_1.pdf'
 FROM Docu_Tipos d, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
@@ -533,7 +533,7 @@ SELECT u.id_usuario, p.id_postulacion
 FROM Usuarios u, Postulaciones p JOIN Postulantes pt ON pt.id_postulante = p.id_postulante
 WHERE u.correo = 'eval1@utec.edu.uy' AND pt.correo = 'nicolas.ferreira@gmail.com';
 INSERT INTO Evaluaciones (id_eval_exte_postulacion, estado, pun_total, com_evaluador)
-SELECT e.id_eval_exte_postulacion, 'Completada', 4.00, 'Plan solido y bien fundamentado.'
+SELECT e.id_eval_exte_postulacion, 'Completada', 4.00, 'Plan sólido y bien fundamentado.'
 FROM Eval_Exte_Postulaciones e JOIN Usuarios u ON u.id_usuario = e.id_usuario
 JOIN Postulaciones p ON p.id_postulacion = e.id_postulacion
 JOIN Postulantes pt ON pt.id_postulante = p.id_postulante

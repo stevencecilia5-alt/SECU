@@ -24,9 +24,9 @@ public final class PerfilUsuarioFactory {
      * @throws IllegalArgumentException Si el rol no está contemplado por la fábrica.
      */
     public static PerfilUsuarioDAO crear(String rol) {
-        if (rol.equals("Administrador")) {
+        if ("Administrador".equals(rol)) {
             return new AdministradorDAO();
-        } else if (rol.equals("Evaluador externo")) {
+        } else if ("Evaluador externo".equals(rol)) {
             return new EvaluadorExternoDAO();
         } else {
             throw new IllegalArgumentException("Rol desconocido: " + rol);

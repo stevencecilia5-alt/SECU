@@ -17,6 +17,7 @@ public class AdministradorDAO implements PerfilUsuarioDAO {
      * @param idUsuario → Identificador del usuario al que se asociará el perfil de administrador.
      * @throws SQLException → Si ocurre un error durante la preparación o ejecución de la consulta SQL.
      */
+    @Override
     public void crearPerfil(Connection con, long idUsuario) throws SQLException {
         String sql = "INSERT INTO administradores (id_usuario) VALUES (?)";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -24,4 +25,4 @@ public class AdministradorDAO implements PerfilUsuarioDAO {
             ps.executeUpdate();
         }
     }
-}
+}

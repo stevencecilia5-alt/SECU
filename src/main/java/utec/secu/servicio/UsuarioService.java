@@ -388,7 +388,7 @@ public class UsuarioService {
      * izquierda) se multiplican por 2, 9, 8, 7, 6, 3 y 4; el verificador es lo que le falta
      * a la suma para llegar a la siguiente decena.
      */
-    public static boolean digitoVerificadorCorrecto(String ci) {
+    private static boolean digitoVerificadorCorrecto(String ci) {
         String ocho = String.format("%8s", ci).replace(' ', '0');
         int suma = 0;
         for (int i = 0; i < 7; i++) {

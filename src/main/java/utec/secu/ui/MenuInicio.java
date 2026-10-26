@@ -48,7 +48,7 @@ public class MenuInicio extends MenuBase {
 
     private Usuario ingresar() {
         String correo = leer("Correo: ");
-        String contrasenia = leer("Contraseña: ");
+        String contrasenia = leerContrasenia("Contraseña: ");
         try {
             Usuario usuario = servicio.autenticar(correo, contrasenia);
             if (usuario == null) {
@@ -100,10 +100,10 @@ public class MenuInicio extends MenuBase {
     /** Pide la nueva contraseña y su confirmación, validando cada una apenas se ingresa. */
     private String pedirNuevaContraseniaConfirmada() {
         while (true) {
-            String nueva = leer("Nueva contraseña (mínimo 6 caracteres): ");
+            String nueva = leerContrasenia("Nueva contraseña (mínimo 6 caracteres): ");
             try {
                 UsuarioService.validarNuevaContrasenia(nueva);
-                UsuarioService.validarConfirmacion(nueva, leer("Confirmar contraseña: "));
+                UsuarioService.validarConfirmacion(nueva, leerContrasenia("Confirmar contraseña: "));
                 return nueva;
             } catch (DatoInvalidoException ex) {
                 System.out.println(ex.getMessage());

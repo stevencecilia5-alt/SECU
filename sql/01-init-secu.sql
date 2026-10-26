@@ -720,15 +720,17 @@ CREATE UNIQUE INDEX UK_Conv_unica_publicada
 -- ---------- 7.1 Usuario administrador inicial (CU01, CU03) ----------
 -- Contrasena: Proyecto2026!
 -- Almacenada cifrada con el algoritmo propio y reversible de
--- ServicioCifrado, que desplaza cada caracter segun su posicion.
+-- ServicioCifrado, que desplaza cada caracter segun el caracter de la
+-- clave (una frase) que le corresponde por su posicion.
 -- El valor debe coincidir con ServicioCifrado.hashPassword("Proyecto2026!");
--- si se modifica el algoritmo, hay que regenerarlo.
+-- si se modifica el algoritmo o la clave, hay que regenerarlo. La comilla
+-- simple del valor cifrado va duplicada ('') porque asi se escribe en SQL.
 
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido,
                       nacionalidad, estado, rol, req_cam_clave)
 VALUES ('40123450',
         'admin@secu.edu.uy',
-        'Qtr}ji{w;:=B.',
+        '2"w''u$YuC=BPA',
         'Administrador',
         'SECU',
         'Uruguaya',
@@ -752,26 +754,26 @@ INSERT INTO Sedes (nom_sede) VALUES
 -- CU05 exige registrar el departamento academico pero no enumera los valores.
 
 INSERT INTO Dept_Academicos (nom_departamento) VALUES
-    ('Departamento de Innovacion y Emprendimiento'),
-    ('Departamento de Tecnologias de la Informacion'),
-    ('Departamento de Energias Renovables'),
+    ('Departamento de Innovación y Emprendimiento'),
+    ('Departamento de Tecnologías de la Información'),
+    ('Departamento de Energías Renovables'),
     ('Departamento de Procesos Industriales'),
     ('Departamento de Ciencias Agrarias y Agroambientales'),
-    ('Departamento de Ciencia y Tecnologia de Alimentos'),
-    ('Departamento de Logistica y Transporte'),
-    ('Departamento de Ciencias Basicas');
+    ('Departamento de Ciencia y Tecnología de Alimentos'),
+    ('Departamento de Logística y Transporte'),
+    ('Departamento de Ciencias Básicas');
 
 -- ---------- 7.4 Tipos de documento (CU06) ----------
 
 INSERT INTO Docu_Tipos (nom_tip_documento) VALUES
     ('Plan de trabajo'),
     ('Presupuesto'),
-    ('Constancia de inscripcion al posgrado'),
+    ('Constancia de inscripción al posgrado'),
     ('Escolaridad de grado'),
     ('CVuy del postulante'),
     ('CVuy del tutor'),
     ('Carta aval del tutor'),
-    ('Carta de motivacion'),
+    ('Carta de motivación'),
     ('Escolaridad de posgrado'),
     ('CVuy del co-tutor'),
     ('Otros documentos adicionales');
@@ -783,7 +785,7 @@ INSERT INTO Docu_Tipos (nom_tip_documento) VALUES
 INSERT INTO Secc_Rubricas (nom_seccion, peso) VALUES
     ('Antecedentes del postulante',              20.00),
     ('Antecedentes del tutor y grupo receptor',  15.00),
-    ('Descripcion del plan de trabajo',          30.00),
+    ('Descripción del plan de trabajo',          30.00),
     ('Cronograma de actividades',                10.00),
     ('Aporte al desarrollo del postulante',      15.00),
     ('Aporte al grupo receptor',                 10.00);
@@ -794,27 +796,27 @@ INSERT INTO Secc_Rubricas (nom_seccion, peso) VALUES
 INSERT INTO Criterios (id_secc_rubrica, nom_criterio)
 SELECT s.id_secc_rubrica, c.nom_criterio
 FROM (VALUES
-    ('Antecedentes del postulante',             'Formacion academica previa y escolaridad'),
-    ('Antecedentes del postulante',             'Produccion academica y publicaciones en CVuy'),
-    ('Antecedentes del postulante',             'Experiencia previa en proyectos de investigacion'),
+    ('Antecedentes del postulante',             'Formación académica previa y escolaridad'),
+    ('Antecedentes del postulante',             'Producción académica y publicaciones en CVuy'),
+    ('Antecedentes del postulante',             'Experiencia previa en proyectos de investigación'),
 
-    ('Antecedentes del tutor y grupo receptor', 'Trayectoria academica y cientifica reciente del tutor'),
+    ('Antecedentes del tutor y grupo receptor', 'Trayectoria académica y científica reciente del tutor'),
     ('Antecedentes del tutor y grupo receptor', 'Capacidad y fortaleza del grupo receptor'),
-    ('Antecedentes del tutor y grupo receptor', 'Pertinencia del area de acogida e investigacion'),
+    ('Antecedentes del tutor y grupo receptor', 'Pertinencia del área de acogida e investigación'),
 
-    ('Descripcion del plan de trabajo',         'Claridad y precision de los objetivos del proyecto'),
-    ('Descripcion del plan de trabajo',         'Solidez, rigor metodologico y viabilidad tecnica'),
-    ('Descripcion del plan de trabajo',         'Originalidad e innovacion de la propuesta'),
-    ('Descripcion del plan de trabajo',         'Pertinencia e impacto de los resultados esperados'),
+    ('Descripción del plan de trabajo',         'Claridad y precisión de los objetivos del proyecto'),
+    ('Descripción del plan de trabajo',         'Solidez, rigor metodológico y viabilidad técnica'),
+    ('Descripción del plan de trabajo',         'Originalidad e innovación de la propuesta'),
+    ('Descripción del plan de trabajo',         'Pertinencia e impacto de los resultados esperados'),
 
-    ('Cronograma de actividades',               'Coherencia y distribucion temporal de metas e hitos'),
-    ('Cronograma de actividades',               'Adecuacion de los plazos solicitados con las actividades'),
+    ('Cronograma de actividades',               'Coherencia y distribución temporal de metas e hitos'),
+    ('Cronograma de actividades',               'Adecuación de los plazos solicitados con las actividades'),
 
-    ('Aporte al desarrollo del postulante',     'Impacto directo en la formacion academica del becario'),
-    ('Aporte al desarrollo del postulante',     'Proyeccion profesional y cientifica posterior'),
+    ('Aporte al desarrollo del postulante',     'Impacto directo en la formación académica del becario'),
+    ('Aporte al desarrollo del postulante',     'Proyección profesional y científica posterior'),
 
-    ('Aporte al grupo receptor',                'Contribucion a la linea estrategica del grupo receptor'),
-    ('Aporte al grupo receptor',                'Transferencia efectiva de conocimiento e innovacion')
+    ('Aporte al grupo receptor',                'Contribución a la línea estratégica del grupo receptor'),
+    ('Aporte al grupo receptor',                'Transferencia efectiva de conocimiento e innovación')
 ) AS c(nom_seccion, nom_criterio)
 JOIN Secc_Rubricas s ON s.nom_seccion = c.nom_seccion;
 

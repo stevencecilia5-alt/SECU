@@ -228,6 +228,19 @@ public class PostulacionService {
         }
     }
 
+    /**
+     * Controla que se haya encontrado la postulación al buscar su estado (CU06 y CU08-09).
+     *
+     * @return El mismo estado.
+     * @throws DatoInvalidoException Si el estado es {@code null}: no existe una postulación con ese identificador.
+     */
+    public static EstadoPostulacion verificarExiste(EstadoPostulacion estado) {
+        if (estado == null) {
+            throw new DatoInvalidoException(MSG_NO_ENCONTRADA);
+        }
+        return estado;
+    }
+
     /** @throws DatoInvalidoException Si el texto no es un identificador numérico. */
     public static long parsearId(String texto) {
         try {

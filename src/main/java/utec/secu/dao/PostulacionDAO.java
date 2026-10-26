@@ -105,6 +105,19 @@ public class PostulacionDAO {
     }
 
     /**
+     * @return El estado de la postulación, o {@code null} si no existe. Lo usan los Proxy de CU06 y CU08-09.
+     */
+    public EstadoPostulacion buscarEstado(long id) throws SQLException {
+        Connection con = ConexionBD.getInstancia().getConnection();
+        try (PreparedStatement ps = con.prepareStatement("SELECT estado FROM postulaciones WHERE id_postulacion = ?")) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? EstadoPostulacion.desdeBD(rs.getString("estado")) : null;
+            }
+        }
+    }
+
+    /**
      * Obtiene una postulación con todos los datos de su detalle.
      *
      * @param id Identificador de la postulación.

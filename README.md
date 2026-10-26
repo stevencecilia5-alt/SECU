@@ -36,7 +36,7 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
 
 1. **CU01 — Autenticación, Gestión de Sesión y Control de Acceso:**
    * Inicio de sesión interactivo por consola mediante correo institucional y contraseña.
-   * Verificación de credenciales protegidas con algoritmo propio/hash y validación de estado activo (`Activo` vs. `Inactivo`).
+   * Verificación de credenciales cifradas con el algoritmo propio de `ServicioCifrado` y validación de estado activo (`Activo` vs. `Inactivo`).
    * Detección del flag `req_cam_clave = TRUE` y redirección forzosa al flujo de cambio obligatorio de contraseña en el primer ingreso.
    * Flujo de cambio voluntario de clave desde el menú principal (cada usuario gestiona exclusivamente su propia contraseña).
    * Despliegue dinámico de opciones del menú principal según el rol autenticado (`Administrador` vs. `Evaluador externo`).
@@ -50,15 +50,20 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
    * Inactivación lógica (baja) y reactivación/restablecimiento de credenciales temporales.
 
 3. **CU07 — Consulta y Gestión de Postulaciones:**
-   * Listado general y filtrado avanzado de postulaciones por convocatoria, postulante, documento, correo, tutor, grupo o rango de fechas (con validación cronológica).
+   * Búsqueda con un filtro por consulta: convocatoria, postulante, correo, documento, tutor, grupo de investigación, estado o rango de fechas (con validación cronológica), o listado de todas las postulaciones.
    * Visualización del detalle completo multinivel: datos del postulante, carrera, departamento, sede, tutores asignados, documentos adjuntos cargados y evaluadores vinculados.
    * **Modificación administrativa focalizada:** Permite modificar exclusivamente el departamento académico y la sede regional sobre postulaciones en estados editables (`Registrada` o `En revisión`), respetando la propuesta inmutable del postulante.
    * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL.
 
+### Módulo Implementado en la Etapa 3
+
+4. **CU08 + CU09 — Gestión del Proceso de Evaluación:**
+   * **Asignación de evaluadores (CU08, Administrador):** asigna exactamente dos Evaluadores externos activos a cada postulación `En revisión`. La postulación pasa sola a `En evaluación` cuando tiene sus dos evaluadores y al menos uno empezó su evaluación. Permite consultar los evaluadores de una postulación y las postulaciones de un evaluador, reemplazar a un evaluador que todavía no registró su evaluación y registrar el juicio global de una postulación ya evaluada (`Evaluada`, `Aprobada` o `Rechazada`).
+   * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica.
+
 ---
 
-### Módulos del Proyecto Global (Proyección Etapa 3 y Opcionales)
-* **CU08 + CU09 — Asignación de Evaluadores y Rúbrica de Evaluación:** Asignación de duplas de evaluadores externos por postulación y calificación cuantitativa ponderada sobre las 6 secciones fijas de la rúbrica (suma del 100%).
+### Módulos Opcionales del Proyecto Global
 * **CU06 — Gestión de Documentos Adjuntos (Opcional):** Validación y persistencia de archivos PDF (máx. 10 MB) para 11 tipos de documentos de respaldo.
 * **CU11 — Registro del Orden Final CES (Opcional):** Registro de la prelación definitiva del Consejo de Enseñanza Superior con justificación ante discrepancias.
 * **CU12 — Vista Consolidada y Reportes (Opcional):** Panel integral de consulta del ciclo evaluativo y exportación de resultados a planillas Excel.
@@ -73,9 +78,9 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 | :--- | :--- | :--- | :--- | :--- |
 | **Singleton** | Creacional | `ConexionBD` | `utec.secu.conexion` | Garantiza una **única instancia activa de conexión JDBC** compartida a PostgreSQL para toda la sesión del programa, evitando la sobrecarga de abrir y cerrar conexiones físicas por cada consulta SQL. |
 | **Factory Method** | Creacional | `PerfilUsuarioFactory`, `PerfilUsuarioDAO` (Interfaz), `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.factory` y `utec.secu.dao` | Encapsula y desacopla la instanciación de los DAOs de perfiles especializados (`administradores` o `eval_externos`) según el rol del usuario durante el alta o modificación, sin acoplar `UsuarioDAO` a clases concretas. |
-| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO` y `PostulacionDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea rol `Administrador` antes de delegar la operación. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
-| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
-| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
+| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy`, `EvaluacionProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO`, `PostulacionDAO` y `EvaluacionDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea el rol que exige la operación (`Administrador`, o `Evaluador externo` para CU09, que además solo accede a las postulaciones que tiene asignadas) antes de delegarla. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
+| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService`, `EvaluacionService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
+| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
 
 ---
 
@@ -84,14 +89,15 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 * **Clase responsable:** `utec.secu.seguridad.ServicioCifrado` (clase utilitaria final con constructor privado, desacoplada de la UI y los DAOs).
-* **Algoritmo propio y reversible:** Aplica una transformación posicional dinámica sobre cada carácter del texto plano (`código + (índice + 1)`), permitiendo que el método `descifrar(textoCifrado)` recupere el valor original mediante la función inversa para verificación de conceptos.
+* **Algoritmo propio y reversible, con clave:** cada carácter de la contraseña se desplaza según la letra de la clave que le toca (una frase, constante `CLAVE`). Con la misma clave, `descifrar(texto, clave)` recupera la contraseña original; con otra clave, no.
 * **Justificación académica obligatoria:** Este mecanismo se implementa **únicamente con fines académicos** para ejercitar y evaluar el desarrollo de algoritmos propios en Java sin librerías externas que resuelvan completamente el proceso. En un entorno de producción real, este esquema se reemplaza por funciones de derivación criptográficamente seguras como BCrypt o Argon2 con salt aleatorio.
 * **Persistencia segura:** PostgreSQL almacena exclusivamente el valor cifrado en la columna `contrasenia` de la tabla `usuarios`. En ningún caso se persiste texto plano.
+* **Contraseñas con asteriscos:** al escribir una contraseña se muestran asteriscos (librería JLine, dependencia `org.jline:jline` del `pom.xml`). Funciona en una terminal real, como CMD o PowerShell al ejecutar el JAR (sección 8); en la consola Run de IntelliJ se ve lo que se escribe.
 * **Confidencialidad de credenciales:** Las contraseñas temporales se escriben exclusivamente en el archivo local `correos_simulados/bandeja_salida.txt` a través de `ServicioCorreo`. La carpeta `correos_simulados/` se encuentra excluida en `.gitignore` para garantizar que las claves no se suban al repositorio remoto de GitLab.
 
 ---
 
-## 6. Estructura de Paquetes del Proyecto (28 Clases)
+## 6. Estructura de Paquetes del Proyecto (35 Clases)
 
 El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`:
 
@@ -101,6 +107,7 @@ src/main/java/utec/secu/
 │   └── ConexionBD.java                         # Singleton: Conexión JDBC compartida a PostgreSQL
 ├── dao/
 │   ├── AdministradorDAO.java                   # DAO específico para perfil Administrador
+│   ├── EvaluacionDAO.java                      # DAO transaccional de asignaciones y evaluaciones (CU08, CU09)
 │   ├── EvaluadorExternoDAO.java                # DAO específico para perfil Evaluador Externo
 │   ├── PerfilUsuarioDAO.java                   # Interfaz base para DAOs de perfiles especializados
 │   ├── PostulacionDAO.java                     # DAO transaccional para postulaciones, filtros y catálogos
@@ -113,23 +120,29 @@ src/main/java/utec/secu/
 ├── factory/
 │   └── PerfilUsuarioFactory.java               # Factory Method para instanciar DAOs de perfiles
 ├── modelo/
+│   ├── Criterio.java                           # Criterio de la rúbrica fija con su sección, peso y puntaje (CU09)
 │   ├── EstadoPostulacion.java                  # Enum con estados y transiciones permitidas (CU07)
+│   ├── Evaluacion.java                         # Asignación de un evaluador y su evaluación (CU08, CU09)
 │   ├── FiltroPostulacion.java                  # Enum con los filtros de búsqueda de CU07 (sin SQL)
 │   ├── Postulacion.java                        # Entidad del dominio de postulación
 │   └── Usuario.java                            # Entidad del dominio de usuario
 ├── seguridad/
+│   ├── EvaluacionProxy.java                    # Proxy de autorización para CU08 (Administrador) y CU09 (evaluador asignado)
 │   ├── PostulacionProxy.java                   # Proxy de autorización para PostulacionDAO
 │   ├── ProxyBase.java                          # Clase abstracta con reglas comunes de sesión y rol
 │   ├── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
 │   └── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
 ├── servicio/
+│   ├── EvaluacionService.java                  # Facade de negocio para CU08 y CU09 (asignaciones, puntajes, cálculo)
 │   ├── PostulacionService.java                 # Facade de negocio para CU07 (fechas, estados, filtros)
 │   ├── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
 │   └── UsuarioService.java                     # Facade de negocio para CU01 y CU03 (validaciones, altas)
 └── ui/
     ├── Main.java                               # Punto de entrada de la aplicación y ciclo general
+    ├── MenuAsignacion.java                     # Submenú interactivo para CU08 (asignación de evaluadores)
     ├── MenuBase.java                           # Clase abstracta base para menús de consola y lecturas
     ├── MenuInicio.java                         # Submenú de inicio de sesión y recuperación (CU01)
+    ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
     ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
     ├── MenuPrincipal.java                      # Menú principal con opciones según rol autenticado
     └── MenuUsuarios.java                       # Submenú interactivo para CU03 (gestión de usuarios)
@@ -141,7 +154,7 @@ src/main/java/utec/secu/
 
 ### Prerrequisitos
 * **Java Development Kit (JDK):** Versión 17 o 21.
-* **Apache Maven:** Versión 3.8 o superior.
+* **Apache Maven:** Versión 3.8 o superior. Descarga las dependencias del `pom.xml`: el driver de PostgreSQL y JLine (contraseñas con asteriscos).
 * **Motor de Base de Datos / Contenedor:** Docker Desktop **o** PostgreSQL 16+ instalado localmente.
 
 ---
@@ -165,8 +178,8 @@ docker compose up -d
 
 #### Opción B: Carga Manual del Script SQL (Instancia Local)
 Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBeaver o pgAdmin sobre la base `secu_db`:
-1. `sql/01-init-secu-consolidado.sql` (Recrea el esquema `PROYECTO`, genera las 24 tablas en 3FN, restricciones CHECK, UNIQUE, dominios e inserta semillas de catálogos y usuario administrador inicial).
-2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para verificar CU07).
+1. `sql/01-init-secu.sql` (Recrea el esquema `PROYECTO`, genera las 24 tablas en 3FN, restricciones CHECK, UNIQUE, dominios e inserta semillas de catálogos y usuario administrador inicial).
+2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones).
 
 ---
 
@@ -181,16 +194,21 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
    ```bash
    mvn exec:java -Dexec.mainClass="utec.secu.ui.Main"
    ```
-3. **Ejecutar pruebas unitarias automatizadas:**
-   ```bash
-   mvn test
-   ```
 
 ### Desde el IDE (IntelliJ IDEA)
 1. Abrir la carpeta raíz del proyecto en IntelliJ IDEA.
 2. Aguardar a que Maven sincronice las dependencias del `pom.xml`.
 3. Navegar a `src/main/java/utec/secu/ui/Main.java`.
 4. Hacer clic derecho sobre la clase y seleccionar **Run 'Main.main()'**.
+
+### Generar y ejecutar el JAR (fuera de IntelliJ)
+1. **File → Project Structure → Artifacts → + → JAR → From modules with dependencies.** En *Main class* elegir `utec.secu.ui.Main` y en *JAR files from libraries* elegir **Extract to the target JAR**, para que el JAR lleve adentro todas las dependencias del `pom.xml`. Confirmar con **OK**.
+2. **Build → Build Artifacts → Build.** El JAR queda en `out\artifacts\secu_anglo_jar\` (la carpeta `out/` está en `.gitignore`).
+3. Con la base levantada (`docker compose up -d`), abrir CMD o PowerShell **en la raíz del proyecto** y ejecutar:
+   ```bash
+   java -jar out\artifacts\secu_anglo_jar\secu-anglo.jar
+   ```
+   Se ejecuta desde la raíz porque las carpetas que usa SECU, como `correos_simulados/`, son rutas relativas a la carpeta actual.
 
 ---
 

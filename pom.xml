@@ -21,5 +21,11 @@
             <artifactId>postgresql</artifactId>
             <version>42.7.4</version>
         </dependency>
+        <!-- JLine: muestra asteriscos al escribir una contraseña en la terminal -->
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>3.30.0</version>
+        </dependency>
     </dependencies>
 </project>

@@ -2,6 +2,13 @@ package utec.secu.ui;
 
 import utec.secu.modelo.Usuario;
 
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
+import org.jline.terminal.TerminalBuilder;
+
+import java.io.IOException;
 import java.util.Scanner;
 
 /**
@@ -17,6 +24,9 @@ public abstract class MenuBase {
     protected final Scanner sc;
     protected final Usuario sesion;
 
+    /** Lector de JLine para las contraseñas; se crea la primera vez que se pide una. */
+    private static LineReader lectorContrasenias;
+
     protected MenuBase(Scanner sc, Usuario sesion) {
         this.sc = sc;
         this.sesion = sesion;
@@ -26,6 +36,29 @@ public abstract class MenuBase {
     protected String leer(String mensaje) {
         System.out.print(mensaje);
         return sc.nextLine();
+    }
+
+    /**
+     * Pide una contraseña y muestra asteriscos mientras se escribe (librería JLine). Solo funciona
+     * en una terminal real, como CMD o PowerShell al ejecutar el JAR; en la consola Run de IntelliJ
+     * no hay terminal y la contraseña se lee como cualquier otro dato.
+     */
+    protected String leerContrasenia(String mensaje) {
+        if (System.console() == null) {
+            return leer(mensaje);
+        }
+        try {
+            if (lectorContrasenias == null) {
+                lectorContrasenias = LineReaderBuilder.builder()
+                        .terminal(TerminalBuilder.builder().system(true).build())
+                        .build();
+            }
+            return lectorContrasenias.readLine(mensaje, '*');
+        } catch (IOException e) {
+            return leer(mensaje);     // no se pudo abrir la terminal: se lee sin asteriscos
+        } catch (UserInterruptException | EndOfFileException e) {
+            return "";                // Ctrl+C o fin de entrada: queda vacía y la validación lo informa
+        }
     }
 
     /** Pregunta (s/n) y devuelve {@code true} solo si la respuesta es "s". */
