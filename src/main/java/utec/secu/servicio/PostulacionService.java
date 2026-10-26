@@ -47,7 +47,16 @@ public class PostulacionService {
     private final PostulacionProxy proxy;
 
     public PostulacionService() {
-        this.proxy = new PostulacionProxy();
+        this(new PostulacionProxy());
+    }
+
+    /**
+     * Constructor para las pruebas unitarias: recibe el Proxy que se va a usar. Así una prueba
+     * le pasa un Proxy simulado con Mockito y prueba las reglas sin base de datos.
+     * La aplicación usa el constructor público, que crea el Proxy real.
+     */
+    PostulacionService(PostulacionProxy proxy) {
+        this.proxy = proxy;
     }
 
     // =========================================================================

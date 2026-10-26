@@ -67,7 +67,16 @@ public class UsuarioService {
     private final SeguridadProxy seguridadProxy;
 
     public UsuarioService() {
-        this.seguridadProxy = new SeguridadProxy();
+        this(new SeguridadProxy());
+    }
+
+    /**
+     * Constructor para las pruebas unitarias: recibe el Proxy que se va a usar. Así una prueba
+     * le pasa un Proxy simulado con Mockito y prueba las reglas sin base de datos.
+     * La aplicación usa el constructor público, que crea el Proxy real.
+     */
+    UsuarioService(SeguridadProxy seguridadProxy) {
+        this.seguridadProxy = seguridadProxy;
     }
 
     // =========================================================================
