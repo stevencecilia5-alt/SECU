@@ -55,16 +55,23 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
    * **Modificación administrativa focalizada:** Permite modificar exclusivamente el departamento académico y la sede regional sobre postulaciones en estados editables (`Registrada` o `En revisión`), respetando la propuesta inmutable del postulante.
    * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL.
 
-### Módulo Implementado en la Etapa 3
+### Módulos Implementados en la Etapa 3
 
 4. **CU08 + CU09 — Gestión del Proceso de Evaluación:**
    * **Asignación de evaluadores (CU08, Administrador):** asigna exactamente dos Evaluadores externos activos a cada postulación `En revisión`. La postulación pasa sola a `En evaluación` cuando tiene sus dos evaluadores y al menos uno empezó su evaluación. Permite consultar los evaluadores de una postulación y las postulaciones de un evaluador, reemplazar a un evaluador que todavía no registró su evaluación y registrar el juicio global de una postulación ya evaluada (`Evaluada`, `Aprobada` o `Rechazada`).
    * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica.
 
+5. **CU06 — Gestión de Documentos Adjuntos (opción 5 del menú de postulaciones):**
+   * Muestra los documentos que pide la convocatoria de la postulación (obligatorios y opcionales), los que ya están cargados con el tamaño de cada archivo, y avisa qué documentos obligatorios faltan.
+   * Carga cada documento validando que el archivo exista, tenga formato PDF (extensión `.pdf` y contenido PDF), no esté vacío y pese como máximo 10 MB. Si el archivo no es válido, informa el motivo y vuelve a pedir la ruta.
+   * Cada tipo de documento se carga una sola vez, salvo *Otros documentos adicionales*, que admite hasta 4 archivos.
+   * Permite abrir un documento con el visor de PDF del equipo y quitar un documento cargado por error. El evaluador también abre los documentos de sus postulaciones asignadas, desde *Ver detalle de una postulación asignada* (CU09).
+   * Solo se cargan o quitan documentos de postulaciones `Registrada` o `En revisión`. El Administrador carga los documentos que entregó el postulante.
+   * El archivo se copia a la carpeta `adjuntos/` y la base guarda solo su ruta (ver la sección 9).
+
 ---
 
 ### Módulos Opcionales del Proyecto Global
-* **CU06 — Gestión de Documentos Adjuntos (Opcional):** Validación y persistencia de archivos PDF (máx. 10 MB) para 11 tipos de documentos de respaldo.
 * **CU11 — Registro del Orden Final CES (Opcional):** Registro de la prelación definitiva del Consejo de Enseñanza Superior con justificación ante discrepancias.
 * **CU12 — Vista Consolidada y Reportes (Opcional):** Panel integral de consulta del ciclo evaluativo y exportación de resultados a planillas Excel.
 
@@ -78,9 +85,9 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 | :--- | :--- | :--- | :--- | :--- |
 | **Singleton** | Creacional | `ConexionBD` | `utec.secu.conexion` | Garantiza una **única instancia activa de conexión JDBC** compartida a PostgreSQL para toda la sesión del programa, evitando la sobrecarga de abrir y cerrar conexiones físicas por cada consulta SQL. |
 | **Factory Method** | Creacional | `PerfilUsuarioFactory`, `PerfilUsuarioDAO` (Interfaz), `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.factory` y `utec.secu.dao` | Encapsula y desacopla la instanciación de los DAOs de perfiles especializados (`administradores` o `eval_externos`) según el rol del usuario durante el alta o modificación, sin acoplar `UsuarioDAO` a clases concretas. |
-| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy`, `EvaluacionProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO`, `PostulacionDAO` y `EvaluacionDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea el rol que exige la operación (`Administrador`, o `Evaluador externo` para CU09, que además solo accede a las postulaciones que tiene asignadas) antes de delegarla. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
-| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService`, `EvaluacionService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
-| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
+| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy`, `EvaluacionProxy`, `DocumentoProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO` y `DocumentoDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea el rol que exige la operación (`Administrador`, o `Evaluador externo` para CU09, que además solo accede a las postulaciones que tiene asignadas) antes de delegarla. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
+| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService`, `EvaluacionService`, `DocumentoService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
+| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `DocumentoDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
 
 ---
 
@@ -97,7 +104,7 @@ En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 ---
 
-## 6. Estructura de Paquetes del Proyecto (35 Clases)
+## 6. Estructura de Paquetes del Proyecto (41 Clases)
 
 El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`:
 
@@ -107,6 +114,7 @@ src/main/java/utec/secu/
 │   └── ConexionBD.java                         # Singleton: Conexión JDBC compartida a PostgreSQL
 ├── dao/
 │   ├── AdministradorDAO.java                   # DAO específico para perfil Administrador
+│   ├── DocumentoDAO.java                       # DAO de documentos adjuntos y tipos por convocatoria (CU06)
 │   ├── EvaluacionDAO.java                      # DAO transaccional de asignaciones y evaluaciones (CU08, CU09)
 │   ├── EvaluadorExternoDAO.java                # DAO específico para perfil Evaluador Externo
 │   ├── PerfilUsuarioDAO.java                   # Interfaz base para DAOs de perfiles especializados
@@ -121,18 +129,22 @@ src/main/java/utec/secu/
 │   └── PerfilUsuarioFactory.java               # Factory Method para instanciar DAOs de perfiles
 ├── modelo/
 │   ├── Criterio.java                           # Criterio de la rúbrica fija con su sección, peso y puntaje (CU09)
+│   ├── DocumentoAdjunto.java                   # Documento cargado en una postulación, con la ruta del PDF (CU06)
 │   ├── EstadoPostulacion.java                  # Enum con estados y transiciones permitidas (CU07)
 │   ├── Evaluacion.java                         # Asignación de un evaluador y su evaluación (CU08, CU09)
 │   ├── FiltroPostulacion.java                  # Enum con los filtros de búsqueda de CU07 (sin SQL)
 │   ├── Postulacion.java                        # Entidad del dominio de postulación
+│   ├── TipoDocumento.java                      # Tipo de documento que pide una convocatoria, obligatorio u opcional (CU06)
 │   └── Usuario.java                            # Entidad del dominio de usuario
 ├── seguridad/
+│   ├── DocumentoProxy.java                     # Proxy de autorización para CU06 (Administrador)
 │   ├── EvaluacionProxy.java                    # Proxy de autorización para CU08 (Administrador) y CU09 (evaluador asignado)
 │   ├── PostulacionProxy.java                   # Proxy de autorización para PostulacionDAO
 │   ├── ProxyBase.java                          # Clase abstracta con reglas comunes de sesión y rol
 │   ├── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
 │   └── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
 ├── servicio/
+│   ├── DocumentoService.java                   # Facade de negocio para CU06 (validación del PDF, copia y reglas)
 │   ├── EvaluacionService.java                  # Facade de negocio para CU08 y CU09 (asignaciones, puntajes, cálculo)
 │   ├── PostulacionService.java                 # Facade de negocio para CU07 (fechas, estados, filtros)
 │   ├── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
@@ -141,6 +153,7 @@ src/main/java/utec/secu/
     ├── Main.java                               # Punto de entrada de la aplicación y ciclo general
     ├── MenuAsignacion.java                     # Submenú interactivo para CU08 (asignación de evaluadores)
     ├── MenuBase.java                           # Clase abstracta base para menús de consola y lecturas
+    ├── MenuDocumentos.java                     # Submenú interactivo para CU06 (documentos adjuntos)
     ├── MenuInicio.java                         # Submenú de inicio de sesión y recuperación (CU01)
     ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
     ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
@@ -179,7 +192,7 @@ docker compose up -d
 #### Opción B: Carga Manual del Script SQL (Instancia Local)
 Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBeaver o pgAdmin sobre la base `secu_db`:
 1. `sql/01-init-secu.sql` (Recrea el esquema `PROYECTO`, genera las 24 tablas en 3FN, restricciones CHECK, UNIQUE, dominios e inserta semillas de catálogos y usuario administrador inicial).
-2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones).
+2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones; sus documentos adjuntos apuntan a los PDF de ejemplo de la carpeta `documentos/`).
 
 ---
 
@@ -212,16 +225,32 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ---
 
-## 9. Credenciales Iniciales de Prueba (CU01 / CU03)
+## 9. Documentos Adjuntos (CU06): dónde quedan los archivos
+
+* **La base guarda solo la ruta** de cada PDF (columna `rut_archivo` de `Docu_Adjuntos`), relativa a la carpeta desde donde se ejecuta la aplicación. Por eso hay que ejecutarla desde la **raíz del proyecto** (es lo que hace IntelliJ por defecto y también `mvn exec:java`).
+* **Documentos de ejemplo (`documentos/`):** son los 56 PDF ficticios a los que apunta `sql/02-datos-prueba.sql` (`documentos/P01/plan_de_trabajo.pdf`, etc.). **Se suben a Git**, así todos los integrantes ven y abren los mismos documentos desde CU06 y CU07.
+* **Documentos cargados (`adjuntos/`):** cada documento que se carga con CU06 se copia a `adjuntos/P<id>/` con el nombre del tipo (por ejemplo `adjuntos/P04/plan_de_trabajo.pdf`). La carpeta está en `.gitignore`: cada integrante tiene los suyos, igual que los registros de su base local.
+* Al quitar un documento se borra su registro; el archivo se borra solo si está en `adjuntos/` (los de ejemplo no se tocan).
+* **Valores límite de tamaño** (10 MB = 10.485.760 bytes): no se suben a Git por su peso. Se generan desde PowerShell, en la raíz del proyecto:
+  ```powershell
+  # Exactamente 10 MB: se acepta
+  $f=[IO.File]::Create("$PWD\limite.pdf"); $b=[Text.Encoding]::ASCII.GetBytes("%PDF-1.4`n"); $f.Write($b,0,$b.Length); $f.SetLength(10485760); $f.Close()
+  # 1 byte más de 10 MB: se rechaza
+  $f=[IO.File]::Create("$PWD\grande.pdf"); $b=[Text.Encoding]::ASCII.GetBytes("%PDF-1.4`n"); $f.Write($b,0,$b.Length); $f.SetLength(10485761); $f.Close()
+  ```
+
+---
+
+## 10. Credenciales Iniciales de Prueba (CU01 / CU03)
 
 | Rol | Correo Electrónico | Contraseña Inicial | Comportamiento en Consola |
 | :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios) y CU07 (Postulaciones). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
+| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
 | **Usuario Nuevo (Alta CU03)** | *(Correo asignado)* | *(Clave temporal de 8 caracteres)* | Acceso inicial forzado a cambio de contraseña (`req_cam_clave = TRUE`). La clave temporal se consulta en `correos_simulados/bandeja_salida.txt`. |
 
 ---
 
-## 10. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
+## 11. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
 
 * **`main`:** Rama principal con versiones estables y aprobadas para entregas oficiales.
 * **`develop`:** Rama principal de integración continua del equipo.

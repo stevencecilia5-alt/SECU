@@ -52,6 +52,11 @@ INSERT INTO Docu_Tipo_Convocatorias (id_docu_tipo, id_convocatoria, obligatorio)
 SELECT d.id_docu_tipo, c.id_convocatoria, d.nom_tip_documento IN ('Plan de trabajo', 'Presupuesto', 'Escolaridad de grado', 'CVuy del postulante', 'CVuy del tutor', 'Carta aval del tutor', 'Carta de motivación')
 FROM Docu_Tipos d CROSS JOIN Convocatorias c
 WHERE c.nom_convocatoria = 'Becas de Iniciación a la Investigación 2026';
+-- La segunda convocatoria es de posgrado: también exige la constancia de inscripción.
+INSERT INTO Docu_Tipo_Convocatorias (id_docu_tipo, id_convocatoria, obligatorio)
+SELECT d.id_docu_tipo, c.id_convocatoria, d.nom_tip_documento IN ('Plan de trabajo', 'Presupuesto', 'Constancia de inscripción al posgrado', 'Escolaridad de grado', 'CVuy del postulante', 'CVuy del tutor', 'Carta aval del tutor', 'Carta de motivación')
+FROM Docu_Tipos d CROSS JOIN Convocatorias c
+WHERE c.nom_convocatoria = 'Becas de Posgrado 2026';
 
 -- ---------- 3. Tutores UTEC ----------
 INSERT INTO Tuto_Utec (cor_utec, nombre, apellido, dep_area) VALUES

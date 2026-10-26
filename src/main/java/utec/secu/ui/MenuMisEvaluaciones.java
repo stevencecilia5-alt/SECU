@@ -5,6 +5,7 @@ import utec.secu.excepciones.DatoInvalidoException;
 import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Criterio;
+import utec.secu.modelo.DocumentoAdjunto;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.Postulacion;
 import utec.secu.modelo.Usuario;
@@ -18,9 +19,9 @@ import java.util.Scanner;
 /**
  * Menú de consola de CU09: Mis evaluaciones (solo Evaluador externo).
  * <p>
- * El evaluador ve las postulaciones que tiene asignadas, las evalúa con la rúbrica
- * fija (16 criterios con puntaje entero de 1 a 5) y puede guardar un borrador o
- * finalizar. Las reglas están en {@link EvaluacionService}.
+ * El evaluador ve las postulaciones que tiene asignadas, abre sus documentos desde el
+ * detalle, las evalúa con la rúbrica fija (16 criterios con puntaje entero de 1 a 5) y
+ * puede guardar un borrador o finalizar. Las reglas están en {@link EvaluacionService}.
  * </p>
  *
  * @author Grupo 10 - ANGLO Deploy
@@ -150,25 +151,7 @@ public class MenuMisEvaluaciones extends MenuBase {
 
         System.out.println("\n--- Postulación " + p.getIdPostulacion() + " ---");
         System.out.println("Postulante:         " + p.getNombreCompletoPostulante());
-        System.out.println("Convocatoria:       " + p.getConvocatoria());
-        System.out.println("Proyecto:           " + p.getNomProyecto());
-        System.out.println("Línea:              " + p.getLinInvestigacion());
-        System.out.println("Grupo:              " + p.getGruInvestigacion()
-                + (p.getOtrGruInvestigacion() == null ? "" : " / " + p.getOtrGruInvestigacion()));
-        System.out.println("Departamento:       " + p.getDeptAcademico());
-        System.out.println("Sede:               " + p.getSede());
-        System.out.println("Meses solicitados:  " + p.getCanMeses());
-        System.out.println("Estado:             " + p.getEstado().getEtiqueta());
-        System.out.println("Tutor principal:    " + (p.getTutorPrincipal() == null ? "(sin asignar)"
-                : p.getTutorPrincipal() + " (" + p.getCorreoTutorPrincipal() + ")"));
-        System.out.println("Co-tutor:           " + (p.getCoTutor() == null ? "(sin asignar)" : p.getCoTutor()));
-        System.out.println("Documentos adjuntos:");
-        if (p.getDocumentos().isEmpty()) {
-            System.out.println("  (ninguno)");
-        }
-        for (String d : p.getDocumentos()) {
-            System.out.println("  - " + d);
-        }
+        MenuPostulaciones.imprimirPropuesta(p);
 
         System.out.println("\nRúbrica (pesos fijos):");
         double suma = 0;
@@ -179,19 +162,29 @@ public class MenuMisEvaluaciones extends MenuBase {
         System.out.println("  Total: " + formatoPeso(suma) + "%");
 
         System.out.println("\nMi evaluación: " + e.getEstado());
-        if (!e.estaRegistrada()) {
-            return;
-        }
-        String seccionActual = "";
-        for (Criterio c : e.getCriterios()) {
-            if (!c.getSeccion().equals(seccionActual)) {
-                seccionActual = c.getSeccion();
-                System.out.println("  " + seccionActual);
+        if (e.estaRegistrada()) {
+            String seccionActual = "";
+            for (Criterio c : e.getCriterios()) {
+                if (!c.getSeccion().equals(seccionActual)) {
+                    seccionActual = c.getSeccion();
+                    System.out.println("  " + seccionActual);
+                }
+                System.out.println("    - " + c.getNombre() + ": " + (c.getPuntaje() == null ? "sin puntaje" : c.getPuntaje()));
             }
-            System.out.println("    - " + c.getNombre() + ": " + (c.getPuntaje() == null ? "sin puntaje" : c.getPuntaje()));
+            System.out.println("Comentario:    " + (e.getComentario() == null ? "" : e.getComentario()));
+            System.out.println("Puntaje total: " + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()));
         }
-        System.out.println("Comentario:    " + (e.getComentario() == null ? "" : e.getComentario()));
-        System.out.println("Puntaje total: " + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()));
+        abrirDocumento(id);
+    }
+
+    /** Muestra los documentos de la postulación y abre el que elija el evaluador. Con Enter se vuelve. */
+    private void abrirDocumento(long idPostulacion) {
+        List<DocumentoAdjunto> documentos = servicio.listarDocumentosAsignada(sesion, idPostulacion);
+        MenuDocumentos.imprimirDocumentos(documentos);
+        int opcion = elegir("Documento a abrir (Enter para volver): ", documentos.size());
+        if (opcion != 0) {
+            MenuDocumentos.abrirArchivo(documentos.get(opcion - 1));
+        }
     }
 
     // =========================================================================

@@ -1,9 +1,11 @@
 package utec.secu.seguridad;
 
+import utec.secu.dao.DocumentoDAO;
 import utec.secu.dao.EvaluacionDAO;
 import utec.secu.dao.PostulacionDAO;
 import utec.secu.dao.UsuarioDAO;
 import utec.secu.excepciones.AccesoDenegadoException;
+import utec.secu.modelo.DocumentoAdjunto;
 import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.Postulacion;
@@ -31,11 +33,13 @@ public class EvaluacionProxy extends ProxyBase {
     private final EvaluacionDAO evaluacionDAO;
     private final UsuarioDAO usuarioDAO;
     private final PostulacionDAO postulacionDAO;
+    private final DocumentoDAO documentoDAO;
 
     public EvaluacionProxy() {
         this.evaluacionDAO = new EvaluacionDAO();
         this.usuarioDAO = new UsuarioDAO();
         this.postulacionDAO = new PostulacionDAO();
+        this.documentoDAO = new DocumentoDAO();
     }
 
     // =========================================================================
@@ -105,6 +109,12 @@ public class EvaluacionProxy extends ProxyBase {
     public Postulacion buscarPostulacionAsignada(Usuario sesion, long idPostulacion) throws SQLException {
         buscarMiEvaluacion(sesion, idPostulacion);
         return postulacionDAO.buscarPorId(idPostulacion);
+    }
+
+    /** @throws AccesoDenegadoException Si el evaluador no tiene asignada la postulación. */
+    public List<DocumentoAdjunto> listarDocumentosAsignada(Usuario sesion, long idPostulacion) throws SQLException {
+        buscarMiEvaluacion(sesion, idPostulacion);
+        return documentoDAO.listarDocumentos(idPostulacion);
     }
 
     /**

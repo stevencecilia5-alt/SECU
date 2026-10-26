@@ -63,7 +63,7 @@ public class MenuPostulaciones extends MenuBase {
                     case "2": verDetalle(); break;
                     case "3": modificar(); break;
                     case "4": cambiarEstado(); break;
-                    case "5":
+                    case "5": new MenuDocumentos(sc, sesion).mostrar(); break;
                     case "6":
                     case "7": System.out.println("Módulo en desarrollo."); break;
                     case "8": enSubmenu = false; break;
@@ -184,6 +184,16 @@ public class MenuPostulaciones extends MenuBase {
         System.out.println("\n--- Postulación " + p.getIdPostulacion() + " ---");
         System.out.println("Postulante:         " + p.getNombreCompletoPostulante() + " ("
                 + p.getTipoDocumento() + " " + p.getDocumentoPostulante() + ") - " + p.getCorreoPostulante());
+        imprimirPropuesta(p);
+        imprimirLista("Documentos adjuntos:", p.getDocumentos());
+        imprimirLista("Evaluadores:", p.getEvaluadores());
+    }
+
+    /**
+     * Muestra los datos de la propuesta, de la convocatoria al co-tutor. También los usa el detalle
+     * del evaluador (CU09), que no muestra la cédula ni el correo del postulante.
+     */
+    static void imprimirPropuesta(Postulacion p) {
         System.out.println("Convocatoria:       " + p.getConvocatoria());
         System.out.println("Proyecto:           " + p.getNomProyecto());
         System.out.println("Línea:              " + p.getLinInvestigacion());
@@ -197,8 +207,6 @@ public class MenuPostulaciones extends MenuBase {
         System.out.println("Tutor principal:    " + (p.getTutorPrincipal() == null ? "(sin asignar)"
                 : p.getTutorPrincipal() + " (" + p.getCorreoTutorPrincipal() + ")"));
         System.out.println("Co-tutor:           " + (p.getCoTutor() == null ? "(sin asignar)" : p.getCoTutor()));
-        imprimirLista("Documentos adjuntos:", p.getDocumentos());
-        imprimirLista("Evaluadores:", p.getEvaluadores());
     }
 
     private void imprimirLista(String titulo, List<String> elementos) {

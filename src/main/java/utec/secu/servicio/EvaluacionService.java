@@ -4,6 +4,7 @@ import utec.secu.excepciones.DatoInvalidoException;
 import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Criterio;
+import utec.secu.modelo.DocumentoAdjunto;
 import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.Postulacion;
@@ -243,6 +244,15 @@ public class EvaluacionService {
     public Postulacion obtenerPostulacionAsignada(Usuario sesion, long idPostulacion) {
         try {
             return proxy.buscarPostulacionAsignada(sesion, idPostulacion);
+        } catch (SQLException e) {
+            throw new ErrorDeDatosException(e);
+        }
+    }
+
+    /** @return Los documentos de una postulación asignada al evaluador en sesión, para abrirlos. */
+    public List<DocumentoAdjunto> listarDocumentosAsignada(Usuario sesion, long idPostulacion) {
+        try {
+            return proxy.listarDocumentosAsignada(sesion, idPostulacion);
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
         }

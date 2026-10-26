@@ -65,4 +65,29 @@ public abstract class MenuBase {
     protected boolean confirmar(String pregunta) {
         return leer(pregunta).trim().equalsIgnoreCase("s");
     }
+
+    /**
+     * Pide un número de una lista numerada hasta que sea válido.
+     *
+     * @return La opción elegida (de 1 a {@code cantidad}), o 0 si el usuario presionó Enter
+     *         o la lista está vacía.
+     */
+    protected int elegir(String mensaje, int cantidad) {
+        if (cantidad == 0) {
+            return 0;
+        }
+        while (true) {
+            String entrada = leer(mensaje).trim();
+            if (entrada.isEmpty()) {
+                return 0;
+            }
+            if (entrada.matches("\\d{1,3}")) {
+                int opcion = Integer.parseInt(entrada);
+                if (opcion >= 1 && opcion <= cantidad) {
+                    return opcion;
+                }
+            }
+            System.out.println("Opción inválida.");
+        }
+    }
 }
