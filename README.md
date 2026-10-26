@@ -69,10 +69,15 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
    * Solo se cargan o quitan documentos de postulaciones `Registrada` o `En revisión`. El Administrador carga los documentos que entregó el postulante.
    * El archivo se copia a la carpeta `adjuntos/` y la base guarda solo su ruta (ver la sección 9).
 
+6. **CU11 — Registro del Orden Final CES (opción 6 del menú de postulaciones):**
+   * Muestra la lista de prelación de una convocatoria: puntaje de cada evaluador, puntaje consolidado, orden calculado por SECU, orden final CES y observaciones.
+   * Registra el orden final CES partiendo del orden calculado: el Administrador mueve una postulación al puesto que decidió el CES (por ejemplo, al puesto 1) y las demás se corren solas. Se pueden mover varias; cada movimiento pide el motivo (observación obligatoria). La opción "Agregar una observación" le suma una observación del CES a cualquier postulación, aunque quede en su orden calculado. La opción "Volver al orden calculado" empieza de nuevo.
+   * El orden calculado por SECU se guarda aparte (`ord_pre_calculado`) y nunca se sobrescribe con el orden CES (`ord_final_ces`).
+   * Si ya hay un orden CES registrado, se puede reemplazar (pide confirmación).
+
 ---
 
 ### Módulos Opcionales del Proyecto Global
-* **CU11 — Registro del Orden Final CES (Opcional):** Registro de la prelación definitiva del Consejo de Enseñanza Superior con justificación ante discrepancias.
 * **CU12 — Vista Consolidada y Reportes (Opcional):** Panel integral de consulta del ciclo evaluativo y exportación de resultados a planillas Excel.
 
 ---
@@ -85,9 +90,9 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 | :--- | :--- | :--- | :--- | :--- |
 | **Singleton** | Creacional | `ConexionBD` | `utec.secu.conexion` | Garantiza una **única instancia activa de conexión JDBC** compartida a PostgreSQL para toda la sesión del programa, evitando la sobrecarga de abrir y cerrar conexiones físicas por cada consulta SQL. |
 | **Factory Method** | Creacional | `PerfilUsuarioFactory`, `PerfilUsuarioDAO` (Interfaz), `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.factory` y `utec.secu.dao` | Encapsula y desacopla la instanciación de los DAOs de perfiles especializados (`administradores` o `eval_externos`) según el rol del usuario durante el alta o modificación, sin acoplar `UsuarioDAO` a clases concretas. |
-| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy`, `EvaluacionProxy`, `DocumentoProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO` y `DocumentoDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea el rol que exige la operación (`Administrador`, o `Evaluador externo` para CU09, que además solo accede a las postulaciones que tiene asignadas) antes de delegarla. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
-| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService`, `EvaluacionService`, `DocumentoService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
-| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `DocumentoDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
+| **Proxy** | Estructural | `ProxyBase` (Abstracta), `SeguridadProxy`, `PostulacionProxy`, `EvaluacionProxy`, `DocumentoProxy`, `ResultadoProxy` | `utec.secu.seguridad` | Actúa como barrera intermedia de seguridad frente a los DAOs (`UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `DocumentoDAO` y `ResultadoDAO`). Verifica que exista sesión activa, que el usuario esté activo y que posea el rol que exige la operación (`Administrador`, o `Evaluador externo` para CU09, que además solo accede a las postulaciones que tiene asignadas) antes de delegarla. Lanza `AccesoDenegadoException` ante accesos no autorizados. |
+| **Facade (Fachada)** | Estructural | `UsuarioService`, `PostulacionService`, `EvaluacionService`, `DocumentoService`, `ResultadoService` | `utec.secu.servicio` | Proporciona una **interfaz unificada y de alto nivel a los menús de consola (`ui`)**, coordinando validaciones de negocio, seguridad (Proxies), persistencia transaccional (DAOs) y servicios auxiliares (Correo). Además traduce los errores de la base (`SQLException`) a `ErrorDeDatosException`, así la consola no depende de JDBC. |
+| **DAO (Data Access Object)** | Arquitectura de Persistencia | `UsuarioDAO`, `PostulacionDAO`, `EvaluacionDAO`, `DocumentoDAO`, `ResultadoDAO`, `AdministradorDAO`, `EvaluadorExternoDAO` | `utec.secu.dao` | Encapsula y centraliza todas las sentencias SQL parametrizadas (`PreparedStatement`), incluidas las condiciones de los filtros de búsqueda de CU07, aislando la base de datos relacional de la lógica de negocio y presentación. |
 
 ---
 
@@ -104,7 +109,7 @@ En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 ---
 
-## 6. Estructura de Paquetes del Proyecto (41 Clases)
+## 6. Estructura de Paquetes del Proyecto (46 Clases)
 
 El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`:
 
@@ -119,6 +124,7 @@ src/main/java/utec/secu/
 │   ├── EvaluadorExternoDAO.java                # DAO específico para perfil Evaluador Externo
 │   ├── PerfilUsuarioDAO.java                   # Interfaz base para DAOs de perfiles especializados
 │   ├── PostulacionDAO.java                     # DAO transaccional para postulaciones, filtros y catálogos
+│   ├── ResultadoDAO.java                       # DAO de puntaje consolidado, orden de prelación y orden CES (CU11)
 │   └── UsuarioDAO.java                         # DAO de usuarios, autenticación y credenciales
 ├── excepciones/
 │   ├── AccesoDenegadoException.java            # Control de acceso y sesiones (lanzada por Proxies)
@@ -134,6 +140,7 @@ src/main/java/utec/secu/
 │   ├── Evaluacion.java                         # Asignación de un evaluador y su evaluación (CU08, CU09)
 │   ├── FiltroPostulacion.java                  # Enum con los filtros de búsqueda de CU07 (sin SQL)
 │   ├── Postulacion.java                        # Entidad del dominio de postulación
+│   ├── ResultadoPostulacion.java               # Postulación con sus evaluaciones, consolidado y órdenes (CU11)
 │   ├── TipoDocumento.java                      # Tipo de documento que pide una convocatoria, obligatorio u opcional (CU06)
 │   └── Usuario.java                            # Entidad del dominio de usuario
 ├── seguridad/
@@ -141,12 +148,14 @@ src/main/java/utec/secu/
 │   ├── EvaluacionProxy.java                    # Proxy de autorización para CU08 (Administrador) y CU09 (evaluador asignado)
 │   ├── PostulacionProxy.java                   # Proxy de autorización para PostulacionDAO
 │   ├── ProxyBase.java                          # Clase abstracta con reglas comunes de sesión y rol
+│   ├── ResultadoProxy.java                     # Proxy de autorización para CU11 (Administrador)
 │   ├── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
 │   └── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
 ├── servicio/
 │   ├── DocumentoService.java                   # Facade de negocio para CU06 (validación del PDF, copia y reglas)
 │   ├── EvaluacionService.java                  # Facade de negocio para CU08 y CU09 (asignaciones, puntajes, cálculo)
 │   ├── PostulacionService.java                 # Facade de negocio para CU07 (fechas, estados, filtros)
+│   ├── ResultadoService.java                   # Facade de negocio para CU11 (armado y registro del orden CES)
 │   ├── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
 │   └── UsuarioService.java                     # Facade de negocio para CU01 y CU03 (validaciones, altas)
 └── ui/
@@ -158,6 +167,7 @@ src/main/java/utec/secu/
     ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
     ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
     ├── MenuPrincipal.java                      # Menú principal con opciones según rol autenticado
+    ├── MenuResultados.java                     # Submenú interactivo para CU11 (orden final CES)
     └── MenuUsuarios.java                       # Submenú interactivo para CU03 (gestión de usuarios)
 ```
 
@@ -241,16 +251,26 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ---
 
-## 10. Credenciales Iniciales de Prueba (CU01 / CU03)
+## 10. Orden Final CES (CU11): reglas
+
+* **Puntaje consolidado y orden calculado (CU10):** el CU10 no es un módulo del equipo, pero el CU11 necesita su resultado. Por eso, cuando una postulación pasa a `Evaluada` (las dos evaluaciones `Completada`), SECU calcula y guarda en la misma transacción su **puntaje consolidado** = (Evaluación 1 + Evaluación 2) / 2, y vuelve a numerar el **orden calculado** de su convocatoria: de mayor a menor puntaje consolidado y, si empatan, alfabético por nombre del postulante.
+* **Postulaciones evaluadas después del orden CES:** quedan sin orden calculado y el CU11 avisa que hay que registrar de nuevo el orden CES; al hacerlo, SECU recalcula el orden de toda la lista.
+* **Observaciones del orden CES:** la postulación que movió el CES guarda el motivo escrito; las que quedan corridas reciben una observación automática, y la que termina en su orden calculado no lleva, salvo la que el CES le agregue con "Agregar una observación" (esa se suma a cualquiera de las otras).
+* **Registrar de nuevo el orden CES:** se parte del orden calculado nuevo; el puesto CES anterior se muestra como referencia.
+* **Resultado de cada postulación:** el resultado definitivo (`Aprobada` o `Rechazada`) se registra con la opción 4 del menú de postulaciones (cambio de estado de CU07), que solo lo permite desde `Evaluada`.
+
+---
+
+## 11. Credenciales Iniciales de Prueba (CU01 / CU03)
 
 | Rol | Correo Electrónico | Contraseña Inicial | Comportamiento en Consola |
 | :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
+| **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos y CU11 Orden final CES) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
 | **Usuario Nuevo (Alta CU03)** | *(Correo asignado)* | *(Clave temporal de 8 caracteres)* | Acceso inicial forzado a cambio de contraseña (`req_cam_clave = TRUE`). La clave temporal se consulta en `correos_simulados/bandeja_salida.txt`. |
 
 ---
 
-## 11. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
+## 12. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
 
 * **`main`:** Rama principal con versiones estables y aprobadas para entregas oficiales.
 * **`develop`:** Rama principal de integración continua del equipo.

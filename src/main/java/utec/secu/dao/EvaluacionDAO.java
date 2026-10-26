@@ -51,6 +51,12 @@ public class EvaluacionDAO {
         return listar(SELECT_ASIGNACION + "WHERE u.ci = ? ORDER BY ep.id_postulacion", null, ciEvaluador);
     }
 
+    /** @return Los evaluadores de todas las postulaciones de una convocatoria, en el orden en que se asignaron (CU11 y CU12). */
+    public List<Evaluacion> listarPorConvocatoria(long idConvocatoria) throws SQLException {
+        return listar(SELECT_ASIGNACION + "WHERE p.id_convocatoria = ? ORDER BY ep.id_eval_exte_postulacion",
+                idConvocatoria, null);
+    }
+
     /**
      * Busca la asignación de un evaluador a una postulación, con los 16 criterios de la
      * rúbrica y los puntajes que ya cargó.
@@ -187,7 +193,8 @@ public class EvaluacionDAO {
     /**
      * Guarda la evaluación con sus puntajes. Si la postulación está En revisión y ya tiene sus
      * dos evaluadores, pasa a En evaluación. Si la evaluación queda Completada y la
-     * otra también lo está, la postulación pasa a Evaluada. Todo en una sola transacción.
+     * otra también lo está, la postulación pasa a Evaluada y se calcula su puntaje consolidado
+     * ({@link ResultadoDAO#consolidar}). Todo en una sola transacción.
      *
      * @return {@code true} si la postulación pasó a Evaluada.
      */
@@ -256,6 +263,9 @@ public class EvaluacionDAO {
                     ps.setString(6, Evaluacion.COMPLETADA);
                     pasoAEvaluada = ps.executeUpdate() == 1;
                 }
+            }
+            if (pasoAEvaluada) {
+                ResultadoDAO.consolidar(con, e.getIdPostulacion());   // puntaje consolidado y orden (CU10)
             }
             con.commit();              // todo salió bien: se guarda todo junto
             return pasoAEvaluada;

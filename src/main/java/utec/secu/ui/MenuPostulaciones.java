@@ -64,7 +64,7 @@ public class MenuPostulaciones extends MenuBase {
                     case "3": modificar(); break;
                     case "4": cambiarEstado(); break;
                     case "5": new MenuDocumentos(sc, sesion).mostrar(); break;
-                    case "6":
+                    case "6": new MenuResultados(sc, sesion).mostrarOrdenCes(); break;
                     case "7": System.out.println("Módulo en desarrollo."); break;
                     case "8": enSubmenu = false; break;
                     default: System.out.println("Opción inválida.");
