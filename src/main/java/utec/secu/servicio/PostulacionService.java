@@ -40,6 +40,7 @@ public class PostulacionService {
     public static final String MSG_FECHA = "La fecha no es válida: usá el formato dd/mm/aaaa.";
     public static final String MSG_ESTADO_FINAL = "La postulación está en un estado final y no admite cambios.";
     public static final String MSG_NO_MODIFICABLE = "Solo se pueden modificar postulaciones Registradas o En revisión.";
+    public static final String MSG_TRANSICION = "No se puede pasar de %s a %s.";
 
     private static final DateTimeFormatter FORMATO_FECHA =
             DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
@@ -47,7 +48,16 @@ public class PostulacionService {
     private final PostulacionProxy proxy;
 
     public PostulacionService() {
-        this.proxy = new PostulacionProxy();
+        this(new PostulacionProxy());
+    }
+
+    /**
+     * Constructor para las pruebas unitarias: recibe el Proxy que se va a usar. Así una prueba
+     * le pasa un Proxy simulado con Mockito y prueba las reglas sin base de datos.
+     * La aplicación usa el constructor público, que crea el Proxy real.
+     */
+    PostulacionService(PostulacionProxy proxy) {
+        this.proxy = proxy;
     }
 
     // =========================================================================
@@ -197,7 +207,8 @@ public class PostulacionService {
             Postulacion p = obtenerParaCambiarEstado(sesion, id);
             EstadoPostulacion actual = p.getEstado();
             if (!actual.transicionesManuales().contains(nuevo)) {
-                throw new OperacionNoPermitidaException("Opción inválida.");
+                throw new OperacionNoPermitidaException(
+                        String.format(MSG_TRANSICION, actual.getEtiqueta(), nuevo.getEtiqueta()));
             }
             if (!proxy.cambiarEstado(sesion, id, actual, nuevo)) {
                 throw new OperacionNoPermitidaException(

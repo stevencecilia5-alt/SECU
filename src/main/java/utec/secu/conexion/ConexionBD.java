@@ -45,15 +45,16 @@ public class ConexionBD {
 
     /**
      * Obtiene la conexión activa con la base de datos.
-     * Si no existe una conexión o la conexión actual está cerrada, establece una nueva.
+     * Si no existe una conexión o la actual no responde (está cerrada o se cortó, por ejemplo
+     * porque se reinició Docker), establece una nueva.
      *
      * @return Conexión activa con la base de datos PostgreSQL.
      * @throws SQLException Si ocurre un error al establecer o verificar la conexión.
      */
     public Connection getConnection() throws SQLException {
-        if (conexion == null || conexion.isClosed()) {
+        if (conexion == null || !conexion.isValid(2)) {   // espera hasta 2 segundos la respuesta
             conexion = DriverManager.getConnection(URL, USUARIO, CONTRASENA);
         }
         return conexion;
     }
-}
+}

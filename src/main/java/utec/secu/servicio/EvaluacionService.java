@@ -50,13 +50,24 @@ public class EvaluacionService {
     public static final String MSG_NO_EVALUABLE = "La postulación ya no admite evaluaciones.";
     public static final String MSG_PUNTAJE = "El Puntaje no es válido: debe ser un número entero de 1 a 5.";
     public static final String MSG_FALTAN_CRITERIOS = "No se puede finalizar: faltan criterios por puntuar.";
+    public static final String MSG_BORRADOR_VACIO =
+            "La evaluación no tiene puntajes ni comentario: no se guardó y sigue Pendiente.";
 
     private static final String ROL_EVALUADOR = "Evaluador externo";
 
     private final EvaluacionProxy proxy;
 
     public EvaluacionService() {
-        this.proxy = new EvaluacionProxy();
+        this(new EvaluacionProxy());
+    }
+
+    /**
+     * Constructor para las pruebas unitarias: recibe el Proxy que se va a usar. Así una prueba
+     * le pasa un Proxy simulado con Mockito y prueba las reglas sin base de datos.
+     * La aplicación usa el constructor público, que crea el Proxy real.
+     */
+    EvaluacionService(EvaluacionProxy proxy) {
+        this.proxy = proxy;
     }
 
     // =========================================================================
@@ -261,8 +272,16 @@ public class EvaluacionService {
     /**
      * Guarda la evaluación como borrador: queda En proceso, aunque falten criterios.
      * Si la postulación está En revisión y ya tiene sus dos evaluadores, pasa a En evaluación.
+     * Un borrador sin ningún puntaje ni comentario no se guarda: el evaluador todavía no empezó, y
+     * guardarlo bloquearía su reemplazo (CU08) y pasaría la postulación a En evaluación.
+     *
+     * @throws OperacionNoPermitidaException Si no tiene puntajes ni comentario, la evaluación ya está
+     *                                       Completada o la postulación ya no se evalúa.
      */
     public void guardarBorrador(Usuario sesion, Evaluacion e) {
+        if (e.estaVacia()) {
+            throw new OperacionNoPermitidaException(MSG_BORRADOR_VACIO);
+        }
         e.setEstado(Evaluacion.EN_PROCESO);
         e.setPuntajeTotal(null);
         guardar(sesion, e);
@@ -273,11 +292,14 @@ public class EvaluacionService {
      * tiene sus dos evaluadores, pasa a En evaluación; con las dos Completadas, pasa a Evaluada.
      *
      * @return {@code true} si, al quedar las dos evaluaciones Completadas, la postulación pasó a Evaluada.
-     * @throws OperacionNoPermitidaException Si faltan criterios por puntuar; en ese caso se guarda como borrador.
+     * @throws OperacionNoPermitidaException Si faltan criterios por puntuar (en ese caso se guarda como borrador),
+     *                                       la evaluación ya está Completada o la postulación ya no se evalúa.
      */
     public boolean finalizar(Usuario sesion, Evaluacion e) {
         if (!e.todosPuntuados()) {
-            guardarBorrador(sesion, e);
+            if (!e.estaVacia()) {
+                guardarBorrador(sesion, e);    // lo que ya puntuó queda guardado como borrador (FAQ)
+            }
             throw new OperacionNoPermitidaException(MSG_FALTAN_CRITERIOS);
         }
         e.setEstado(Evaluacion.COMPLETADA);
@@ -285,7 +307,15 @@ public class EvaluacionService {
         return guardar(sesion, e);
     }
 
+    /**
+     * Guarda la evaluación después de volver a leerla de la base: una evaluación Completada no se
+     * modifica y solo se evalúan postulaciones En revisión o En evaluación (CU09 y FAQ). El control
+     * está acá, y no solo en el menú, para que valga para cualquier llamada a guardar o finalizar.
+     *
+     * @throws OperacionNoPermitidaException Si la evaluación ya está Completada o la postulación ya no se evalúa.
+     */
     private boolean guardar(Usuario sesion, Evaluacion e) {
+        obtenerParaEvaluar(sesion, e.getIdPostulacion());
         try {
             return proxy.guardarEvaluacion(sesion, e);
         } catch (SQLException ex) {

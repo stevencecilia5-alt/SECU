@@ -1,6 +1,7 @@
 package utec.secu.dao;
 
 import utec.secu.conexion.ConexionBD;
+import utec.secu.modelo.DatosPostulante;
 import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.FiltroPostulacion;
 import utec.secu.modelo.Postulacion;
@@ -118,7 +119,8 @@ public class PostulacionDAO {
     }
 
     /**
-     * Obtiene una postulación con todos los datos de su detalle.
+     * Obtiene una postulación con todos los datos de su detalle, incluidos los que el postulante
+     * registró en CU05 (datos personales, de contacto y formación) y la información de la convocatoria.
      *
      * @param id Identificador de la postulación.
      * @return La postulación, o {@code null} si no existe.
@@ -127,14 +129,33 @@ public class PostulacionDAO {
     public Postulacion buscarPorId(long id) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
         String sql = "SELECT p.*, pt.nombre, pt.apellido, pt.correo, pt.documento, pt.tip_documento, "
-                + "c.nom_convocatoria, d.nom_departamento, s.nom_sede "
+                + "pt.nacionalidad, pt.pai_procedencia, pt.dep_procedencia, pt.loc_procedencia, "
+                + "pt.calle, pt.num_domicilio, pt.apartamento, pt.bis, pt.es_doc_utec, pt.act_laboral, "
+                + "c.nom_convocatoria, c.tip_beca, c.descripcion AS descripcion_convocatoria, "
+                + "d.nom_departamento, s.nom_sede, "
+                + "ca.nom_carrera, pg.nom_posgrado, i.nom_institucion "
                 + "FROM postulaciones p "
                 + "JOIN postulantes pt ON pt.id_postulante = p.id_postulante "
                 + "JOIN convocatorias c ON c.id_convocatoria = p.id_convocatoria "
                 + "JOIN dept_academicos d ON d.id_dept_academico = p.id_dept_academico "
                 + "JOIN sedes s ON s.id_sede = p.id_sede "
+                + "LEFT JOIN formaciones f ON f.id_postulante = pt.id_postulante "
+                + "LEFT JOIN carreras ca ON ca.id_carrera = f.id_carrera "
+                + "LEFT JOIN posgrados pg ON pg.id_posgrado = f.id_posgrado "
+                + "LEFT JOIN instituciones i ON i.id_institucion = pg.id_institucion "
                 + "WHERE p.id_postulacion = ?";
         Postulacion p;
+        long idPostulante;
+        String nacionalidad;
+        String pais;
+        String departamento;
+        String localidad;
+        String domicilio;
+        boolean docenteUtec;
+        String actividadLaboral;
+        String carrera;
+        String posgrado;
+        String institucion;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -150,8 +171,27 @@ public class PostulacionDAO {
                 p.setCanMeses(rs.getInt("can_meses"));
                 p.setGruInvestigacion(rs.getString("gru_investigacion"));
                 p.setOtrGruInvestigacion(rs.getString("otr_gru_investigacion"));
+                p.setTipoBeca(rs.getString("tip_beca"));
+                p.setDescripcionConvocatoria(rs.getString("descripcion_convocatoria"));
+
+                idPostulante = rs.getLong("id_postulante");
+                nacionalidad = rs.getString("nacionalidad");
+                pais = rs.getString("pai_procedencia");
+                departamento = rs.getString("dep_procedencia");
+                localidad = rs.getString("loc_procedencia");
+                boolean valorBis = rs.getBoolean("bis");
+                Boolean bis = rs.wasNull() ? null : valorBis;   // bis admite NULL
+                domicilio = DatosPostulante.armarDomicilio(rs.getString("calle"), rs.getString("num_domicilio"),
+                        rs.getString("apartamento"), bis);
+                docenteUtec = rs.getBoolean("es_doc_utec");
+                actividadLaboral = rs.getString("act_laboral");
+                carrera = rs.getString("nom_carrera");
+                posgrado = rs.getString("nom_posgrado");
+                institucion = rs.getString("nom_institucion");
             }
         }
+        p.setDatosPostulante(new DatosPostulante(nacionalidad, pais, departamento, localidad, domicilio,
+                listarCelulares(con, idPostulante), docenteUtec, actividadLaboral, carrera, posgrado, institucion));
         cargarTutores(con, p);
         cargarDocumentos(con, p);
         cargarEvaluadores(con, p);
@@ -197,12 +237,26 @@ public class PostulacionDAO {
      */
     public boolean cambiarEstado(long id, EstadoPostulacion actual, EstadoPostulacion nuevo) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
-        String sql = "UPDATE postulaciones SET estado = ? WHERE id_postulacion = ? AND estado = ?";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, nuevo.getValorBD());
-            ps.setLong(2, id);
-            ps.setString(3, actual.getValorBD());
-            return ps.executeUpdate() == 1;
+        con.setAutoCommit(false);      // empieza la transacción: nada se guarda todavía
+        try {
+            boolean cambiado;
+            try (PreparedStatement ps = con.prepareStatement(
+                    "UPDATE postulaciones SET estado = ? WHERE id_postulacion = ? AND estado = ?")) {
+                ps.setString(1, nuevo.getValorBD());
+                ps.setLong(2, id);
+                ps.setString(3, actual.getValorBD());
+                cambiado = ps.executeUpdate() == 1;
+            }
+            if (cambiado && actual == EstadoPostulacion.EVALUADA && nuevo == EstadoPostulacion.CANCELADA) {
+                ResultadoDAO.quitarDePrelacion(con, id);
+            }
+            con.commit();              // todo salió bien: se guarda todo junto
+            return cambiado;
+        } catch (SQLException ex) {
+            con.rollback();            // algo falló: se deshace todo
+            throw ex;
+        } finally {
+            con.setAutoCommit(true);   // la conexión vuelve a guardar cada consulta sola
         }
     }
 
@@ -229,6 +283,21 @@ public class PostulacionDAO {
         p.setNomProyecto(rs.getString("nom_proyecto"));
         p.setEstado(EstadoPostulacion.desdeBD(rs.getString("estado")));
         return p;
+    }
+
+    /** @return Los teléfonos celulares del postulante, en el orden en que se registraron (CU05). */
+    private List<String> listarCelulares(Connection con, long idPostulante) throws SQLException {
+        List<String> celulares = new ArrayList<>();
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT num_celular FROM celu_postulantes WHERE id_postulante = ? ORDER BY id_celu_postulante")) {
+            ps.setLong(1, idPostulante);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    celulares.add(rs.getString("num_celular"));
+                }
+            }
+        }
+        return celulares;
     }
 
     private void cargarTutores(Connection con, Postulacion p) throws SQLException {

@@ -131,6 +131,7 @@ public class MenuUsuarios extends MenuBase {
                 "numero", actual.getNumDomicilio());
         System.out.println(LISTA_ROLES);
         String rol = pedirDato("Rol [" + actual.getRol() + "]: ", "rol", actual.getRol());
+        servicio.verificarCambioDeRol(sesion, actual, rol);   // aviso temprano; el servicio vuelve a controlar
 
         if (!confirmar("¿Confirmás los cambios? (s/n): ")) {
             System.out.println("Cambios descartados.");
@@ -153,7 +154,7 @@ public class MenuUsuarios extends MenuBase {
     private void darDeBaja() {
         listar();
         Usuario u = servicio.obtenerUsuario(sesion, leer("\nCédula: "));
-        UsuarioService.verificarPuedeDarDeBaja(u);
+        UsuarioService.verificarPuedeDarDeBaja(sesion, u);
         if (!confirmar("¿Confirmás la baja del usuario? (s/n): ")) {
             System.out.println("Operación cancelada.");
             return;

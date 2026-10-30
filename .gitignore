@@ -1,9 +1,9 @@
 .idea/
+# Archivo de módulo de IntelliJ: lo arma IntelliJ a partir del pom.xml
+*.iml
 target/
 out/
 correos_simulados/
-propios/
-fetch
 # Archivos cargados con CU06 (cada uno queda en su equipo; los de ejemplo están en documentos/)
 adjuntos/
 

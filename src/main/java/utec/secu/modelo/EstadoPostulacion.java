@@ -71,7 +71,8 @@ public enum EstadoPostulacion {
 
     /**
      * Estados a los que el Administrador puede pasar a mano desde este estado,
-     * en el orden en que se muestran en el menú.
+     * en el orden en que se muestran en el menú. Una cancelación recibida fuera del sistema
+     * se registra en cualquier estado que no sea final (CU07), también después de evaluada.
      *
      * @return Lista de estados permitidos; vacía si el estado es final.
      */
@@ -80,7 +81,7 @@ public enum EstadoPostulacion {
             case REGISTRADA:    return List.of(EN_REVISION, CANCELADA);
             case EN_REVISION:   return List.of(NO_ELEGIBLE, CANCELADA);
             case EN_EVALUACION: return List.of(CANCELADA);
-            case EVALUADA:      return List.of(APROBADA, RECHAZADA);
+            case EVALUADA:      return List.of(APROBADA, RECHAZADA, CANCELADA);
             default:            return List.of();
         }
     }

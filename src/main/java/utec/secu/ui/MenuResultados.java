@@ -86,6 +86,9 @@ public class MenuResultados extends MenuBase {
         }
         if (!ResultadoService.tieneOrdenCes(prelacion)) {
             System.out.println("Todavía no se registró el orden final CES.");
+        } else if (ResultadoService.quedoConHuecos(prelacion)) {
+            System.out.println("Se canceló una postulación después de registrar el orden final CES. "
+                    + "Para renumerar la lista, registrá de nuevo el orden final CES.");
         }
     }
 
@@ -210,7 +213,7 @@ public class MenuResultados extends MenuBase {
             ResultadoPostulacion r = orden.get(i);
             System.out.printf("%-7d %-4d %-26s %-12s %-10s %s%n",
                     i + 1, r.getIdPostulacion(), recortar(r.getPostulante(), 26),
-                    MenuAsignacion.formatoPuntaje(r.getPuntajeConsolidado()), numero(r.getOrdenCalculado()),
+                    formatoPuntaje(r.getPuntajeConsolidado()), numero(r.getOrdenCalculado()),
                     numero(anteriores.get(r.getIdPostulacion())));
         }
         for (ResultadoPostulacion r : orden) {
@@ -232,7 +235,7 @@ public class MenuResultados extends MenuBase {
             System.out.printf("%-10s %-4d %-26s %-8s %-8s %-12s %s%n",
                     numero(r.getOrdenCalculado()), r.getIdPostulacion(), recortar(r.getPostulante(), 26),
                     puntajeEvaluador(r.getEvaluacion(1)), puntajeEvaluador(r.getEvaluacion(2)),
-                    MenuAsignacion.formatoPuntaje(r.getPuntajeConsolidado()), numero(r.getOrdenCes()));
+                    formatoPuntaje(r.getPuntajeConsolidado()), numero(r.getOrdenCes()));
         }
         for (ResultadoPostulacion r : prelacion) {
             if (r.getObservacionCes() != null) {
@@ -279,7 +282,7 @@ public class MenuResultados extends MenuBase {
         System.out.println("  Co-tutor:        " + texto(r.getCoTutor()));
         imprimirEvaluador(1, r.getEvaluacion(1));
         imprimirEvaluador(2, r.getEvaluacion(2));
-        System.out.println("  Consolidado:     " + MenuAsignacion.formatoPuntaje(r.getPuntajeConsolidado())
+        System.out.println("  Consolidado:     " + formatoPuntaje(r.getPuntajeConsolidado())
                 + "   Orden calculado: " + numero(r.getOrdenCalculado())
                 + "   Orden final CES: " + numero(r.getOrdenCes()));
         System.out.println("  Observación CES: " + texto(r.getObservacionCes()));
@@ -292,7 +295,7 @@ public class MenuResultados extends MenuBase {
             return;
         }
         System.out.println("  Evaluador " + numero + ":     " + e.getNombreEvaluador() + " - " + e.getEstado()
-                + " - Puntaje " + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()));
+                + " - Puntaje " + formatoPuntaje(e.getPuntajeTotal()));
         if (e.getComentario() != null) {
             System.out.println("                   Comentarios: " + e.getComentario());
         }
@@ -317,7 +320,7 @@ public class MenuResultados extends MenuBase {
     }
 
     private static String puntajeEvaluador(Evaluacion e) {
-        return e == null ? "-" : MenuAsignacion.formatoPuntaje(e.getPuntajeTotal());
+        return e == null ? "-" : formatoPuntaje(e.getPuntajeTotal());
     }
 
     private static String numero(Integer valor) {
@@ -326,9 +329,5 @@ public class MenuResultados extends MenuBase {
 
     private static String texto(String valor) {
         return valor == null ? "-" : valor;
-    }
-
-    private static String recortar(String texto, int maximo) {
-        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 3) + "...";
     }
 }

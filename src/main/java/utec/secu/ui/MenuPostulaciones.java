@@ -4,6 +4,7 @@ import utec.secu.excepciones.AccesoDenegadoException;
 import utec.secu.excepciones.DatoInvalidoException;
 import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
+import utec.secu.modelo.DatosPostulante;
 import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.FiltroPostulacion;
 import utec.secu.modelo.Postulacion;
@@ -31,6 +32,7 @@ import java.util.Scanner;
 public class MenuPostulaciones extends MenuBase {
 
     private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String SIN_REGISTRAR = "(sin registrar)";
 
     private final PostulacionService servicio;
 
@@ -52,9 +54,7 @@ public class MenuPostulaciones extends MenuBase {
             System.out.println("6. Registrar orden final CES");
             System.out.println("7. Vista consolidada y reportes");
             System.out.println("8. Volver");
-            System.out.print("Elegí una opción: ");
-
-            String opcion = sc.nextLine().trim();
+            String opcion = leer("Elegí una opción: ").trim();
 
             // Si una opción falla, se muestra el mensaje y se vuelve a este menú
             try {
@@ -94,9 +94,7 @@ public class MenuPostulaciones extends MenuBase {
             System.out.println("8. Rango de fechas");
             System.out.println("9. Mostrar todas");
             System.out.println("10. Volver");
-            System.out.print("Elegí una opción: ");
-
-            String opcion = sc.nextLine().trim();
+            String opcion = leer("Elegí una opción: ").trim();
 
             // Si una búsqueda falla, se muestra el mensaje y se vuelve a este menú
             try {
@@ -121,8 +119,7 @@ public class MenuPostulaciones extends MenuBase {
     }
 
     private void buscarPorTexto(FiltroPostulacion filtro, String etiqueta) {
-        System.out.print(etiqueta + ": ");
-        String valor = sc.nextLine();
+        String valor = leer(etiqueta + ": ");
         imprimirListado(servicio.buscar(sesion, filtro, valor));
     }
 
@@ -133,8 +130,7 @@ public class MenuPostulaciones extends MenuBase {
             for (int i = 0; i < estados.length; i++) {
                 System.out.println((i + 1) + ") " + estados[i].getEtiqueta());
             }
-            System.out.print("Elegí una opción: ");
-            int opcion = leerOpcion(estados.length);
+            int opcion = convertirOpcion(leer("Elegí una opción: ").trim(), estados.length);
             if (opcion > 0) {
                 imprimirListado(servicio.buscarPorEstado(sesion, estados[opcion - 1]));
                 return;
@@ -179,22 +175,49 @@ public class MenuPostulaciones extends MenuBase {
     // 2. VER DETALLE
     // =========================================================================
 
+    /** Muestra todos los datos registrados en CU05, los documentos de CU06 y los evaluadores (CU07). */
     private void verDetalle() {
         Postulacion p = servicio.obtenerDetalle(sesion, pedirId());
         System.out.println("\n--- Postulación " + p.getIdPostulacion() + " ---");
-        System.out.println("Postulante:         " + p.getNombreCompletoPostulante() + " ("
-                + p.getTipoDocumento() + " " + p.getDocumentoPostulante() + ") - " + p.getCorreoPostulante());
+        imprimirPostulante(p);
+        System.out.println();
         imprimirPropuesta(p);
         imprimirLista("Documentos adjuntos:", p.getDocumentos());
         imprimirLista("Evaluadores:", p.getEvaluadores());
     }
 
     /**
+     * Muestra los datos personales, de contacto y académicos que el postulante registró en CU05.
+     * Solo los ve el Administrador: el detalle del evaluador (CU09) muestra únicamente la propuesta.
+     */
+    private void imprimirPostulante(Postulacion p) {
+        DatosPostulante d = p.getDatosPostulante();
+        System.out.println("Postulante:         " + p.getNombreCompletoPostulante() + " ("
+                + p.getTipoDocumento() + " " + p.getDocumentoPostulante() + ")");
+        System.out.println("Correo:             " + p.getCorreoPostulante());
+        System.out.println("Celular:            "
+                + (d.getCelulares().isEmpty() ? SIN_REGISTRAR : String.join(" / ", d.getCelulares())));
+        System.out.println("Domicilio:          " + textoOSinRegistrar(d.getDomicilio()));
+        System.out.println("Nacionalidad:       " + d.getNacionalidad());
+        System.out.println("Procedencia:        " + d.getLocalidadProcedencia() + ", "
+                + d.getDepartamentoProcedencia() + " (" + d.getPaisProcedencia() + ")");
+        System.out.println("Carrera:            " + textoOSinRegistrar(d.getCarrera()));
+        System.out.println("Posgrado:           " + (d.getPosgrado() == null ? SIN_REGISTRAR
+                : d.getPosgrado() + " (" + d.getInstitucion() + ")"));
+        System.out.println("Docente en UTEC:    " + (d.isDocenteUtec() ? "Sí" : "No"));
+        System.out.println("Actividad laboral:  " + textoOSinRegistrar(d.getActividadLaboral()));
+    }
+
+    /**
      * Muestra los datos de la propuesta, de la convocatoria al co-tutor. También los usa el detalle
-     * del evaluador (CU09), que no muestra la cédula ni el correo del postulante.
+     * del evaluador (CU09), que no muestra los datos personales del postulante.
      */
     static void imprimirPropuesta(Postulacion p) {
         System.out.println("Convocatoria:       " + p.getConvocatoria());
+        System.out.println("Tipo de beca:       " + p.getTipoBeca());
+        if (p.getDescripcionConvocatoria() != null) {
+            System.out.println("Descripción:        " + p.getDescripcionConvocatoria());
+        }
         System.out.println("Proyecto:           " + p.getNomProyecto());
         System.out.println("Línea:              " + p.getLinInvestigacion());
         System.out.println("Grupo:              " + p.getGruInvestigacion()
@@ -247,8 +270,7 @@ public class MenuPostulaciones extends MenuBase {
             for (int i = 0; i < ids.size(); i++) {
                 System.out.println((i + 1) + ") " + catalogo.get(ids.get(i)));
             }
-            System.out.print(campo + " [" + catalogo.get(idActual) + "]: ");
-            String entrada = sc.nextLine().trim();
+            String entrada = leer(campo + " [" + catalogo.get(idActual) + "]: ").trim();
             if (entrada.isEmpty()) {
                 return idActual;
             }
@@ -274,8 +296,7 @@ public class MenuPostulaciones extends MenuBase {
             for (int i = 0; i < opciones.size(); i++) {
                 System.out.println((i + 1) + ") " + opciones.get(i).getEtiqueta());
             }
-            System.out.print("Elegí una opción (Enter para volver): ");
-            String entrada = sc.nextLine().trim();
+            String entrada = leer("Elegí una opción (Enter para volver): ").trim();
             if (entrada.isEmpty()) {
                 return;
             }
@@ -299,37 +320,18 @@ public class MenuPostulaciones extends MenuBase {
     // AUXILIARES DE CONSOLA
     // =========================================================================
 
-    private long pedirId() {
-        System.out.print("Identificador de la postulación: ");
-        return PostulacionService.parsearId(sc.nextLine());
-    }
-
     private LocalDate pedirFecha(String mensaje) {
         while (true) {
-            System.out.print(mensaje);
             try {
-                return PostulacionService.parsearFecha(sc.nextLine());
+                return PostulacionService.parsearFecha(leer(mensaje));
             } catch (DatoInvalidoException ex) {
                 System.out.println(ex.getMessage());
             }
         }
     }
 
-    private int leerOpcion(int maximo) {
-        return convertirOpcion(sc.nextLine().trim(), maximo);
-    }
-
-    /** @return La opción elegida entre 1 y {@code maximo}, o 0 si no es válida. */
-    private static int convertirOpcion(String entrada, int maximo) {
-        try {
-            int opcion = Integer.parseInt(entrada);
-            return opcion >= 1 && opcion <= maximo ? opcion : 0;
-        } catch (NumberFormatException ex) {
-            return 0;
-        }
-    }
-
-    private static String recortar(String texto, int maximo) {
-        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 3) + "...";
+    /** Muestra un dato opcional del postulante sin escribir "null". */
+    private static String textoOSinRegistrar(String texto) {
+        return texto == null || texto.isBlank() ? SIN_REGISTRAR : texto;
     }
 }

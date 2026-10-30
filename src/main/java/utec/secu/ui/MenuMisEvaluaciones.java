@@ -10,7 +10,6 @@ import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.Postulacion;
 import utec.secu.modelo.Usuario;
 import utec.secu.servicio.EvaluacionService;
-import utec.secu.servicio.PostulacionService;
 
 import java.util.List;
 import java.util.Map;
@@ -113,7 +112,7 @@ public class MenuMisEvaluaciones extends MenuBase {
                 case "2":
                     boolean evaluada = servicio.finalizar(sesion, e);
                     System.out.println("Evaluación completada. Puntaje total: "
-                            + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()) + ".");
+                            + formatoPuntaje(e.getPuntajeTotal()) + ".");
                     if (evaluada) {
                         System.out.println("Las dos evaluaciones están completas: la postulación pasó a Evaluada.");
                     }
@@ -172,7 +171,7 @@ public class MenuMisEvaluaciones extends MenuBase {
                 System.out.println("    - " + c.getNombre() + ": " + (c.getPuntaje() == null ? "sin puntaje" : c.getPuntaje()));
             }
             System.out.println("Comentario:    " + (e.getComentario() == null ? "" : e.getComentario()));
-            System.out.println("Puntaje total: " + MenuAsignacion.formatoPuntaje(e.getPuntajeTotal()));
+            System.out.println("Puntaje total: " + formatoPuntaje(e.getPuntajeTotal()));
         }
         abrirDocumento(id);
     }
@@ -191,16 +190,10 @@ public class MenuMisEvaluaciones extends MenuBase {
     // AUXILIARES DE CONSOLA
     // =========================================================================
 
-    private long pedirId() {
-        return PostulacionService.parsearId(leer("Identificador de la postulación: "));
-    }
 
     /** @return El peso sin decimales si es entero (20.0 -> "20"). */
     private static String formatoPeso(double peso) {
         return peso == Math.rint(peso) ? String.valueOf((long) peso) : String.valueOf(peso);
     }
 
-    private static String recortar(String texto, int maximo) {
-        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 3) + "...";
-    }
 }
