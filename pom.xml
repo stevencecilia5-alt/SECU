@@ -40,5 +40,34 @@
             <artifactId>log4j-core</artifactId>
             <version>2.24.3</version>
         </dependency>
+
+        <!-- Pruebas unitarias (src/test/java): JUnit 5 y Mockito. Alcance test: no van en la aplicación -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.14.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Ejecuta las pruebas de src/test/java con "mvn test" -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+                <configuration>
+                    <!-- Mockito (Byte Buddy) con JDK más nuevos que el 24; en JDK 17 y 21 no cambia nada -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -177,7 +177,7 @@ src/main/java/utec/secu/
 
 ### Prerrequisitos
 * **Java Development Kit (JDK):** Versión 17 o 21.
-* **Apache Maven:** Versión 3.8 o superior. Descarga las dependencias del `pom.xml`: el driver de PostgreSQL, JLine (contraseñas con asteriscos), Apache POI (planilla de Excel del CU12) y Log4j (usado por POI).
+* **Apache Maven:** Versión 3.8 o superior. Descarga las dependencias del `pom.xml`: el driver de PostgreSQL, JLine (contraseñas con asteriscos), Apache POI (planilla de Excel del CU12), Log4j (usado por POI) y, solo para las pruebas, JUnit 5 y Mockito.
 * **Motor de Base de Datos / Contenedor:** Docker Desktop **o** PostgreSQL 16+ instalado localmente.
 
 ---
@@ -217,12 +217,17 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
    ```bash
    mvn exec:java -Dexec.mainClass="utec.secu.ui.Main"
    ```
+3. **Ejecutar las pruebas unitarias** (no necesitan la base de datos ni Docker):
+   ```bash
+   mvn test
+   ```
 
 ### Desde el IDE (IntelliJ IDEA)
 1. Abrir la carpeta raíz del proyecto en IntelliJ IDEA.
 2. Aguardar a que Maven sincronice las dependencias del `pom.xml`. Si el `pom.xml` cambió (por ejemplo, al agregar Apache POI), recargarlo desde el panel de Maven con **Reload All Maven Projects**.
 3. Navegar a `src/main/java/utec/secu/ui/Main.java`.
 4. Hacer clic derecho sobre la clase y seleccionar **Run 'Main.main()'**.
+5. Para ejecutar las pruebas unitarias: clic derecho sobre la carpeta `src/test/java` y seleccionar **Run 'All Tests'**. También se pueden ejecutar desde el panel de Maven: **Lifecycle → test**.
 
 ### Generar y ejecutar el JAR (fuera de IntelliJ)
 1. **File → Project Structure → Artifacts → + → JAR → From modules with dependencies.** En *Main class* elegir `utec.secu.ui.Main` y en *JAR files from libraries* elegir **Extract to the target JAR**, para que el JAR lleve adentro todas las dependencias del `pom.xml`. Confirmar con **OK**.
@@ -241,13 +246,7 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 * **Documentos de ejemplo (`documentos/`):** son los 56 PDF ficticios a los que apunta `sql/02-datos-prueba.sql` (`documentos/P01/plan_de_trabajo.pdf`, etc.). **Se suben a Git**, así todos los integrantes ven y abren los mismos documentos desde CU06 y CU07.
 * **Documentos cargados (`adjuntos/`):** cada documento que se carga con CU06 se copia a `adjuntos/P<id>/` con el nombre del tipo (por ejemplo `adjuntos/P04/plan_de_trabajo.pdf`). La carpeta está en `.gitignore`: cada integrante tiene los suyos, igual que los registros de su base local.
 * Al quitar un documento se borra su registro; el archivo se borra solo si está en `adjuntos/` (los de ejemplo no se tocan).
-* **Valores límite de tamaño** (10 MB = 10.485.760 bytes): no se suben a Git por su peso. Se generan desde PowerShell, en la raíz del proyecto:
-  ```powershell
-  # Exactamente 10 MB: se acepta
-  $f=[IO.File]::Create("$PWD\limite.pdf"); $b=[Text.Encoding]::ASCII.GetBytes("%PDF-1.4`n"); $f.Write($b,0,$b.Length); $f.SetLength(10485760); $f.Close()
-  # 1 byte más de 10 MB: se rechaza
-  $f=[IO.File]::Create("$PWD\grande.pdf"); $b=[Text.Encoding]::ASCII.GetBytes("%PDF-1.4`n"); $f.Write($b,0,$b.Length); $f.SetLength(10485761); $f.Close()
-  ```
+* **Archivos para probar las validaciones a mano** (`pruebas_manuales/cu06/`, los usan los casos de prueba del CU06; no los usan las pruebas unitarias): `documento_valido.pdf`, `documento_vacio.pdf` (0 bytes), `no_es_pdf.pdf` (texto con extensión `.pdf`), `documento.txt`, y los valores límite de tamaño (10 MB = 10.485.760 bytes): `documento_10_mb.pdf` (exactamente 10 MB, se acepta) y `documento_mas_de_10_mb.pdf` (1 byte más, se rechaza). Los dos de 10 MB se suben a Git: son casi todo ceros, así que comprimidos ocupan unos pocos KB.
 
 ---
 
@@ -263,7 +262,51 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ---
 
-## 11. Credenciales Iniciales de Prueba (CU01 / CU03)
+## 11. Pruebas Unitarias (JUnit 5 y Mockito)
+
+Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y usan **JUnit 5** y **Mockito** (dependencias de alcance `test` del `pom.xml`, junto con `maven-surefire-plugin`). **No necesitan la base de datos ni Docker**: se pueden ejecutar en cualquier máquina (ver la sección 8).
+
+### Cómo se prueba sin base de datos
+* Las validaciones de datos son métodos `static` de los servicios (`UsuarioService.validarCedula`, `EvaluacionService.parsearPuntaje`, `DocumentoService.validarArchivo`, etc.) y se prueban directamente.
+* El Proxy rechaza los accesos no autorizados **antes** de llamar al DAO, así que el control de acceso se prueba con el Proxy real.
+* Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
+* Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
+
+### Estructura (27 pruebas)
+```
+src/test/java/utec/secu/
+├── conexion/
+│   └── ConexionBDTest.java                     # Singleton (1)
+├── factory/
+│   └── PerfilUsuarioFactoryTest.java           # Factory Method (1)
+├── modelo/
+│   └── EstadoPostulacionTest.java              # CU07: cambios de estado (2)
+├── seguridad/
+│   └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (3)
+└── servicio/
+    ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
+    ├── UsuarioServiceTest.java                 # CU01 y CU03 (7, una con Mockito)
+    ├── PostulacionServiceTest.java             # CU07: fechas y modificación (2, una con Mockito)
+    ├── EvaluacionServiceTest.java              # CU08 y CU09 (7, tres con Mockito)
+    ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB (2)
+    └── ResultadoServiceTest.java               # CU11: reglas del orden final CES (2)
+```
+
+### Qué verifican
+| Módulo / componente | Pruebas | Reglas comprobadas |
+| :--- | :---: | :--- |
+| **CU01** | 3 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); confirmación igual a la nueva. |
+| **CU03** | 4 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta (con **Mockito**: verifica además que no se guarde nada). |
+| **CU07** | 4 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica (**Mockito**). |
+| **CU08 y CU09** | 7 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador, no se reemplaza a un evaluador que ya empezó a evaluar y finalizar con criterios sin puntaje la deja En proceso (FAQ 4) (**Mockito**). |
+| **Seguridad y patrones** | 5 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
+| **CU06 y CU11** (opcionales) | 4 | PDF de 10 MB exactos aceptado y de 10 MB más 1 byte rechazado; mover una postulación en el orden CES sin escribir el motivo; al moverla, las que quedan corridas reciben la observación automática. |
+
+Cada prueba con datos inválidos verifica también el mensaje de la excepción personalizada que ve el usuario en la consola.
+
+---
+
+## 12. Credenciales Iniciales de Prueba (CU01 / CU03)
 
 | Rol | Correo Electrónico | Contraseña Inicial | Comportamiento en Consola |
 | :--- | :--- | :--- | :--- |
@@ -272,7 +315,7 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 
 ---
 
-## 12. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
+## 13. Flujo de Trabajo en Git (Git Flow) y Rama `feature/estructura-etapa2`
 
 * **`main`:** Rama principal con versiones estables y aprobadas para entregas oficiales.
 * **`develop`:** Rama principal de integración continua del equipo.
