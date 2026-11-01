@@ -8,7 +8,7 @@
 ## 1. Descripción del Proyecto
 **SECU** es una plataforma de software desarrollada en Java y PostgreSQL concebida para centralizar, automatizar y auditar el proceso de postulación, evaluación y selección de becas académicas de la Universidad Tecnológica (UTEC).
 
-La solución sustituye circuitos administrativos dispersos mediante una arquitectura orientada a objetos modular, desacoplada en capas (`ui`, `servicio`, `seguridad`, `dao`, `factory`, `conexion`, `modelo` y `excepciones`), integrando persistencia transaccional sobre **PostgreSQL 16** normalizada en **Tercera Forma Normal (3FN)**.
+La solución sustituye circuitos administrativos dispersos mediante una arquitectura orientada a objetos modular, desacoplada en capas (`ui`, `servicio`, `seguridad`, `dao`, `factory`, `conexion`, `util`, `modelo` y `excepciones`), integrando persistencia transaccional sobre **PostgreSQL 16** normalizada en **Tercera Forma Normal (3FN)**.
 
 ---
 
@@ -38,30 +38,31 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
    * Inicio de sesión interactivo por consola mediante correo institucional y contraseña. El correo no distingue mayúsculas.
    * Verificación de credenciales cifradas con el algoritmo propio de `ServicioCifrado` y validación de estado activo (`Activo` vs. `Inactivo`).
    * Detección del flag `req_cam_clave = TRUE` y redirección forzosa al flujo de cambio obligatorio de contraseña en el primer ingreso.
-   * Flujo de cambio voluntario de clave desde el menú principal (cada usuario gestiona exclusivamente su propia contraseña). La contraseña actual se verifica apenas se escribe, y el servicio vuelve a validar la actual, la política y la confirmación antes de guardar.
-   * Política de contraseñas: al menos 6 caracteres, no solo espacios, y solo letras (también con tilde, ü o ñ), números, espacios y los símbolos del teclado. El cifrado propio transforma los caracteres del teclado y las letras del español que no están en él (`ÁÉÍÓÚÜÑáéíóúüñ`); un carácter fuera de esos, como `¿`, `ç`, `€` o un emoji, se rechaza, así la base nunca guarda una parte en claro.
+   * Flujo de cambio voluntario de clave desde el menú principal (cada usuario gestiona exclusivamente su propia contraseña). El servicio valida la contraseña actual, la política y la confirmación antes de guardar.
+   * Política de contraseñas: al menos 6 caracteres, no solo espacios, y solo letras (también con tilde, ü o ñ), números, espacios y los símbolos del teclado; otros caracteres, como `¿`, `€` o un emoji, se rechazan porque el cifrado no los cubre.
    * Despliegue dinámico de opciones del menú principal según el rol autenticado (`Administrador` vs. `Evaluador externo`).
 
 2. **CU03 — Gestión de Usuarios y Roles:**
    * Alta de nuevos usuarios (`Administrador` o `Evaluador externo`) con generación automática de contraseñas temporales aleatorias de 8 caracteres.
    * Envío desacoplado de credenciales temporales a la bandeja simulada local (`correos_simulados/bandeja_salida.txt`), sin exponer jamás contraseñas en consola ni en logs.
-   * Validaciones de negocio en capa de servicio: formato y longitud de nombres/apellidos (2 a 50 caracteres), algoritmo de validación de dígito verificador de cédula de identidad uruguaya, formato de correo y control estricto de unicidad de CI y correo institucional en base de datos. El teléfono y la calle son opcionales: si se ingresan, se validan.
+   * Validaciones de negocio en capa de servicio: formato y longitud de nombres/apellidos (2 a 50 caracteres), algoritmo de validación de dígito verificador de cédula de identidad uruguaya, formato de correo y control estricto de unicidad de CI y correo institucional en base de datos. Teléfono, calle y número de puerta son obligatorios (datos mínimos del CU03).
    * **Reintento del dato inválido:** ante un dato inválido, el sistema muestra qué regla no se cumple y vuelve a pedir solo ese dato, sin perder los ya ingresados.
+   * En el alta, Enter en cualquier dato cancela el alta; en la modificación, Enter conserva el valor actual.
    * Consulta tabular de usuarios en consola con columnas alineadas.
    * Inactivación lógica (baja) y reactivación/restablecimiento de credenciales temporales.
-   * Un Administrador no puede darse de baja ni cambiar su propio rol: así siempre queda uno activo para reactivar a los demás. Tampoco se cambia el rol de un evaluador con postulaciones asignadas ni de un Administrador con convocatorias a su cargo; el mensaje dice el motivo y vuelve a pedir solo el rol, sin perder los demás datos ingresados.
+   * Un Administrador no puede darse de baja ni cambiar su propio rol, y no se cambia el rol de un evaluador con postulaciones asignadas ni de un Administrador con convocatorias a su cargo; en ese caso se vuelve a pedir solo el rol.
 
 3. **CU07 — Consulta y Gestión de Postulaciones:**
    * Búsqueda con un filtro por consulta: convocatoria, postulante, correo, documento, tutor, grupo de investigación, estado o rango de fechas (con validación cronológica), o listado de todas las postulaciones.
-   * Visualización del detalle completo con los datos registrados en CU05: datos personales y de contacto del postulante (documento, correo, celular, domicilio, nacionalidad y procedencia), formación (carrera, posgrado e institución), docencia en UTEC y actividad laboral, tipo y descripción de la convocatoria, datos del proyecto, departamento, sede, tutores asignados, documentos adjuntos cargados y evaluadores vinculados. El detalle del evaluador (CU09) muestra solo la propuesta, sin los datos personales.
+   * Visualización del detalle completo con los datos registrados en CU05 (postulante, formación, convocatoria y proyecto), tutores, documentos adjuntos y evaluadores. El detalle del evaluador (CU09) muestra solo la propuesta.
    * **Modificación administrativa focalizada:** Permite modificar exclusivamente el departamento académico y la sede regional sobre postulaciones en estados editables (`Registrada` o `En revisión`), respetando la propuesta inmutable del postulante.
-   * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL. Una cancelación recibida fuera del sistema se registra en cualquier estado que no sea final, también desde `Evaluada` (ver la sección 10). Si se intenta un cambio no permitido, el mensaje dice desde qué estado y a cuál.
+   * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL. Se puede cancelar desde cualquier estado que no sea final, también desde `Evaluada` (sección 10).
 
 ### Módulos Implementados en la Etapa 3
 
 4. **CU08 + CU09 — Gestión del Proceso de Evaluación:**
    * **Asignación de evaluadores (CU08, Administrador):** asigna exactamente dos Evaluadores externos activos a cada postulación `En revisión`. La postulación pasa sola a `En evaluación` cuando tiene sus dos evaluadores y al menos uno empezó su evaluación. Permite consultar los evaluadores de una postulación y las postulaciones de un evaluador, reemplazar a un evaluador que todavía no registró su evaluación y registrar el juicio global de una postulación ya evaluada (`Evaluada`, `Aprobada` o `Rechazada`).
-   * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica: el servicio lo vuelve a controlar al guardar. Un borrador sin ningún puntaje ni comentario no se guarda y la evaluación sigue `Pendiente`. La opción "Cancelar sin guardar" sale sin cambios.
+   * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica, y un borrador sin ningún puntaje ni comentario no se guarda.
 
 5. **CU06 — Gestión de Documentos Adjuntos (opción 5 del menú de postulaciones):**
    * Muestra los documentos que pide la convocatoria de la postulación (obligatorios y opcionales), los que ya están cargados con el tamaño de cada archivo, y avisa qué documentos obligatorios faltan.
@@ -73,7 +74,7 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
 
 6. **CU11 — Registro del Orden Final CES (opción 6 del menú de postulaciones):**
    * Muestra la lista de prelación de una convocatoria: puntaje de cada evaluador, puntaje consolidado, orden calculado por SECU, orden final CES y observaciones.
-   * Registra el orden final CES partiendo del orden calculado: el Administrador mueve una postulación al puesto que decidió el CES (por ejemplo, al puesto 1) y las demás se corren solas. Se pueden mover varias; cada movimiento pide el motivo (observación obligatoria). La opción "Agregar una observación" le suma una observación del CES a cualquier postulación, aunque quede en su orden calculado. La opción "Volver al orden calculado" empieza de nuevo.
+   * Registra el orden final CES partiendo del orden calculado: con "Cambiar el puesto de una postulación" se lleva una postulación al puesto que decidió el CES y las demás se corren solas; cada cambio pide el motivo (observación obligatoria). También se puede agregar una observación del CES a cualquier postulación o volver al orden calculado.
    * El orden calculado por SECU se guarda aparte (`ord_pre_calculado`) y nunca se sobrescribe con el orden CES (`ord_final_ces`).
    * Si ya hay un orden CES registrado, se puede reemplazar (pide confirmación).
    * Antes de guardar, el servicio vuelve a controlar las reglas del CU11: cada puesto de 1 a N una sola vez, y observación cuando el puesto final difiere del calculado.
@@ -99,7 +100,7 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 
 ### Excepciones Personalizadas (`utec.secu.excepciones`)
 
-Los servicios validan las reglas de negocio antes de guardar y, si algo no se cumple, lanzan una de estas excepciones. Los menús las atrapan y muestran su mensaje, así un error controlado nunca cierra la aplicación. Si ocurre un error que nadie previó, el menú principal (y el inicio de sesión) muestra "Ocurrió un error inesperado y la operación no se completó. Volvé a intentarlo." y vuelve a su menú, sin cerrar la aplicación.
+Los servicios validan las reglas de negocio antes de guardar y, si algo no se cumple, lanzan una de estas excepciones. Los menús las atrapan y muestran su mensaje, así un error controlado nunca cierra la aplicación. Un error que nadie previó también se informa y se vuelve al menú.
 
 | Excepción | Cuándo se lanza | Ejemplo de mensaje |
 | :--- | :--- | :--- |
@@ -114,10 +115,10 @@ Los servicios validan las reglas de negocio antes de guardar y, si algo no se cu
 
 En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
-* **Clase responsable:** `utec.secu.seguridad.ServicioCifrado` (clase utilitaria final con constructor privado, desacoplada de la UI y los DAOs).
-* **Algoritmo propio y reversible, con clave:** cada carácter de la contraseña se desplaza según la letra de la clave que le toca (una frase, constante `CLAVE`), dentro de su grupo: los 95 caracteres del teclado o las 14 letras del español que no están en él (`ÁÉÍÓÚÜÑáéíóúüñ`, escritas en ese orden). Si la letra de la clave diera vueltas enteras al grupo, el carácter avanza uno, así ningún carácter queda igual. Con la misma clave, `descifrar(texto, clave)` recupera la contraseña original; con otra clave, no. Como los caracteres del teclado quedan dentro del teclado, una contraseña sin ñ ni tildes se cifra igual que en la Etapa 2.
+* **Clase responsable:** `utec.secu.util.ServicioCifrado` (clase utilitaria final con constructor privado, desacoplada de la UI y los DAOs).
+* **Algoritmo propio y reversible, con clave:** cada carácter de la contraseña se desplaza según la letra de la clave que le toca (una frase, constante `CLAVE`), dentro de su grupo: los 95 caracteres del teclado o las 14 letras del español que no están en él (`ÁÉÍÓÚÜÑáéíóúüñ`). Con la misma clave, `descifrar(texto, clave)` recupera la contraseña original; con otra clave, no.
 * **Justificación académica obligatoria:** Este mecanismo se implementa **únicamente con fines académicos** para ejercitar y evaluar el desarrollo de algoritmos propios en Java sin librerías externas que resuelvan completamente el proceso. En un entorno de producción real, este esquema se reemplaza por funciones de derivación criptográficamente seguras como BCrypt o Argon2 con salt aleatorio.
-* **Persistencia segura:** PostgreSQL almacena exclusivamente el valor cifrado en la columna `contrasenia` de la tabla `usuarios`. En ningún caso se persiste texto plano: la política de contraseñas rechaza los caracteres que el algoritmo no transforma (`ServicioCifrado.puedeCifrar`).
+* **Persistencia segura:** PostgreSQL almacena exclusivamente el valor cifrado en la columna `contrasenia` de la tabla `usuarios`. En ningún caso se persiste texto plano.
 * **Contraseñas con asteriscos:** al escribir una contraseña se muestran asteriscos (librería JLine, dependencia `org.jline:jline` del `pom.xml`). Funciona en una terminal real, como CMD o PowerShell al ejecutar el JAR (sección 8); en la consola Run de IntelliJ se ve lo que se escribe.
 * **Confidencialidad de credenciales:** Las contraseñas temporales se escriben exclusivamente en el archivo local `correos_simulados/bandeja_salida.txt` a través de `ServicioCorreo`. La carpeta `correos_simulados/` se encuentra excluida en `.gitignore` para garantizar que las claves no se suban al repositorio remoto de GitLab.
 
@@ -125,7 +126,7 @@ En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 ## 6. Estructura de Paquetes del Proyecto (47 Clases)
 
-El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`:
+El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`, con las carpetas del proyecto guiado (módulo 3 de Algoritmos y Patrones de Diseño): `modelo`, `dao`, `servicio`, `ui` (consola) y `util` (herramientas), más `conexion`, `seguridad`, `factory` y `excepciones`:
 
 ```
 src/main/java/utec/secu/
@@ -164,26 +165,27 @@ src/main/java/utec/secu/
 │   ├── PostulacionProxy.java                   # Proxy de autorización para PostulacionDAO
 │   ├── ProxyBase.java                          # Clase abstracta con reglas comunes de sesión y rol
 │   ├── ResultadoProxy.java                     # Proxy de autorización para CU11 y CU12 (Administrador)
-│   ├── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
-│   └── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
+│   └── SeguridadProxy.java                     # Proxy de autenticación y autorización para UsuarioDAO
 ├── servicio/
 │   ├── DocumentoService.java                   # Facade de negocio para CU06 (validación del PDF, copia y reglas)
 │   ├── EvaluacionService.java                  # Facade de negocio para CU08 y CU09 (asignaciones, puntajes, cálculo)
 │   ├── PostulacionService.java                 # Facade de negocio para CU07 (fechas, estados, filtros)
 │   ├── ResultadoService.java                   # Facade de negocio para CU11 y CU12 (orden CES, exportación a Excel)
-│   ├── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
 │   └── UsuarioService.java                     # Facade de negocio para CU01 y CU03 (validaciones, altas)
-└── ui/
-    ├── Main.java                               # Punto de entrada de la aplicación y ciclo general
-    ├── MenuAsignacion.java                     # Submenú interactivo para CU08 (asignación de evaluadores)
-    ├── MenuBase.java                           # Clase abstracta base de los menús: lecturas, confirmaciones, listas y formatos comunes
-    ├── MenuDocumentos.java                     # Submenú interactivo para CU06 (documentos adjuntos)
-    ├── MenuInicio.java                         # Submenú de inicio de sesión y recuperación (CU01)
-    ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
-    ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
-    ├── MenuPrincipal.java                      # Menú principal con opciones según rol autenticado
-    ├── MenuResultados.java                     # Submenús interactivos para CU11 (orden CES) y CU12 (vista consolidada)
-    └── MenuUsuarios.java                       # Submenú interactivo para CU03 (gestión de usuarios)
+├── ui/
+│   ├── Main.java                               # Punto de entrada de la aplicación y ciclo general
+│   ├── MenuAsignacion.java                     # Submenú interactivo para CU08 (asignación de evaluadores)
+│   ├── MenuBase.java                           # Clase abstracta base de los menús: lecturas, confirmaciones, listas y formatos comunes
+│   ├── MenuDocumentos.java                     # Submenú interactivo para CU06 (documentos adjuntos)
+│   ├── MenuInicio.java                         # Submenú de inicio de sesión y recuperación (CU01)
+│   ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
+│   ├── MenuPostulaciones.java                  # Submenú interactivo para CU07 (postulaciones)
+│   ├── MenuPrincipal.java                      # Menú principal con opciones según rol autenticado
+│   ├── MenuResultados.java                     # Submenús interactivos para CU11 (orden CES) y CU12 (vista consolidada)
+│   └── MenuUsuarios.java                       # Submenú interactivo para CU03 (gestión de usuarios)
+└── util/
+    ├── ServicioCifrado.java                    # Cifrado algorítmico propio y reversible (académico)
+    └── ServicioCorreo.java                     # Simulador de correo electrónico a archivo local
 ```
 
 ---
@@ -219,7 +221,7 @@ Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBea
 1. `sql/01-init-secu.sql` (Recrea el esquema `PROYECTO`, genera las 24 tablas en 3FN, restricciones CHECK, UNIQUE, dominios e inserta semillas de catálogos y usuario administrador inicial).
 2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulantes con celular y formación, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones; sus documentos adjuntos apuntan a los PDF de ejemplo de la carpeta `documentos/`).
 
-El diagrama del modelo físico de la base está en `docs/Modelo Físico Grupo 10.drawio` (se abre con draw.io). No va en `sql/` porque `docker-compose.yml` monta esa carpeta para crear la base.
+El diagrama del modelo físico de la base se entrega con el documento del proyecto; no está en el repositorio. La base se crea con los scripts de `sql/`.
 
 ---
 
@@ -247,7 +249,7 @@ El diagrama del modelo físico de la base está en `docs/Modelo Físico Grupo 10
 5. Para ejecutar las pruebas unitarias: clic derecho sobre la carpeta `src/test/java` y seleccionar **Run 'All Tests'**. También se pueden ejecutar desde el panel de Maven: **Lifecycle → test**.
 
 ### Generar y ejecutar el JAR (fuera de IntelliJ)
-1. **File → Project Structure → Artifacts → + → JAR → From modules with dependencies.** En *Main class* elegir `utec.secu.ui.Main` y en *JAR files from libraries* elegir **Extract to the target JAR**, para que el JAR lleve adentro todas las dependencias del `pom.xml`. En *Directory for META-INF/MANIFEST.MF* elegir `src\main\java`: en `src\main\resources` ya está el `MANIFEST.MF` del proyecto (con `Enable-Native-Access: ALL-UNNAMED`, para que JLine no muestre un aviso con Java 22 o más nuevo) e IntelliJ no deja crear otro ahí. Confirmar con **OK**.
+1. **File → Project Structure → Artifacts → + → JAR → From modules with dependencies.** En *Main class* elegir `utec.secu.ui.Main` y en *JAR files from libraries* elegir **Extract to the target JAR**, para que el JAR lleve adentro todas las dependencias del `pom.xml`. En *Directory for META-INF/MANIFEST.MF* elegir `src\main\java`, porque el `MANIFEST.MF` del proyecto ya está en `src\main\resources`. Confirmar con **OK**.
 2. **Build → Build Artifacts → Build.** El JAR queda en `out\artifacts\secu_anglo_jar\` (la carpeta `out/` está en `.gitignore`).
 3. Con la base levantada (`docker compose up -d`), abrir CMD o PowerShell **en la raíz del proyecto** y ejecutar:
    ```bash
@@ -271,7 +273,7 @@ El diagrama del modelo físico de la base está en `docs/Modelo Físico Grupo 10
 
 * **Puntaje consolidado y orden calculado (CU10):** el CU10 no es un módulo del equipo, pero el CU11 y el CU12 necesitan su resultado. Por eso, cuando una postulación pasa a `Evaluada` (las dos evaluaciones `Completada`), SECU calcula y guarda en la misma transacción su **puntaje consolidado** = (Evaluación 1 + Evaluación 2) / 2, y vuelve a numerar el **orden calculado** de su convocatoria: de mayor a menor puntaje consolidado y, si empatan, alfabético por nombre del postulante.
 * **Postulaciones evaluadas después del orden CES:** quedan sin orden calculado y el CU11 avisa que hay que registrar de nuevo el orden CES; al hacerlo, SECU recalcula el orden de toda la lista.
-* **Postulación Evaluada que se cancela (CU07):** sale de la prelación y pierde su orden calculado y su puesto CES; conserva su puntaje. Si la convocatoria no tiene orden CES, el orden calculado de las demás se renumera enseguida. Si ya lo tiene, las demás conservan su puesto (queda un hueco) y el CU11 avisa que hay que registrar de nuevo el orden CES. En la vista del CU12 la cancelada aparece al final, sin orden.
+* **Postulación Evaluada que se cancela (CU07):** sale de la prelación y conserva su puntaje. Sin orden CES, el orden calculado se renumera; con orden CES, el CU11 avisa que hay que registrarlo de nuevo. En la vista del CU12 aparece al final.
 * **Observaciones del orden CES:** la postulación que movió el CES guarda el motivo escrito; las que quedan corridas reciben una observación automática, y la que termina en su orden calculado no lleva, salvo la que el CES le agregue con "Agregar una observación" (esa se suma a cualquiera de las otras).
 * **Registrar de nuevo el orden CES:** se parte del orden calculado nuevo; el puesto CES anterior se muestra como referencia.
 * **Resultado de cada postulación:** el resultado definitivo (`Aprobada` o `Rechazada`) se registra con la opción 4 del menú de postulaciones (cambio de estado de CU07), que solo lo permite desde `Evaluada`.
@@ -290,7 +292,7 @@ Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y u
 * Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
 * Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
 
-### Estructura (39 pruebas)
+### Estructura (40 pruebas)
 ```
 src/test/java/utec/secu/
 ├── conexion/
@@ -299,22 +301,22 @@ src/test/java/utec/secu/
 │   └── PerfilUsuarioFactoryTest.java           # Factory Method (1)
 ├── modelo/
 │   └── EstadoPostulacionTest.java              # CU07: cambios de estado (3)
-├── seguridad/
-│   └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (4)
-└── servicio/
-    ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
-    ├── UsuarioServiceTest.java                 # CU01 y CU03 (12, cinco con Mockito)
-    ├── PostulacionServiceTest.java             # CU07: fechas, modificación y cambio de estado (3, dos con Mockito)
-    ├── EvaluacionServiceTest.java              # CU08 y CU09 (9, cinco con Mockito)
-    ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB y tipo de documento (3)
-    └── ResultadoServiceTest.java               # CU11: reglas del orden final CES (3)
+├── servicio/
+│   ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
+│   ├── UsuarioServiceTest.java                 # CU01 y CU03 (13, cinco con Mockito)
+│   ├── PostulacionServiceTest.java             # CU07: fechas, modificación y cambio de estado (3, dos con Mockito)
+│   ├── EvaluacionServiceTest.java              # CU08 y CU09 (9, cinco con Mockito)
+│   ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB y tipo de documento (3)
+│   └── ResultadoServiceTest.java               # CU11: reglas del orden final CES (3)
+└── util/
+    └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (4)
 ```
 
 ### Qué verifican
 | Módulo / componente | Pruebas | Reglas comprobadas |
 | :--- | :---: | :--- |
 | **CU01** | 6 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); con `¿`, `€` o un emoji se rechaza y con ñ y tildes se acepta; confirmación igual a la nueva; con la contraseña actual incorrecta no se cambia nada y el login con el correo o la contraseña vacíos no llega a la base (estas dos con **Mockito**). |
-| **CU03** | 6 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta; un Administrador no se da de baja a sí mismo; no se cambia el rol de un evaluador con postulaciones asignadas (estas tres con **Mockito**: verifican además que no se guarde nada). |
+| **CU03** | 7 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); teléfono, calle y número de puerta obligatorios, y número de hasta 8 caracteres (límite 8 y 9); cédula ya registrada en un alta; un Administrador no se da de baja a sí mismo; no se cambia el rol de un evaluador con postulaciones asignadas (estas tres con **Mockito**: verifican además que no se guarde nada). |
 | **CU07** | 6 | Transición permitida y no permitida; una Evaluada se puede cancelar; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica y un cambio de estado no permitido dice el motivo (**Mockito**). |
 | **CU08 y CU09** | 9 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador y no se reemplaza a un evaluador que ya empezó a evaluar; finalizar con criterios sin puntaje la deja En proceso (FAQ 4); una evaluación Completada no se vuelve a guardar y un borrador vacío no se guarda (**Mockito**). |
 | **Seguridad y patrones** | 6 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; la ñ y las tildes también se cifran; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
@@ -342,7 +344,8 @@ Cada prueba con datos inválidos verifica también el mensaje de la excepción p
 
 ### Etapa 3: una rama por día, cada una sobre la anterior
 * Día 1: CU08 + CU09. Día 2: CU06. Día 3: CU11. Día 4: CU12.
-* Después, las pruebas unitarias con los archivos de prueba del CU06 (`feature/pruebas-unitarias-y-archivos-de-prueba`), y los cambios de la revisión del código en cinco commits, cada uno con sus pruebas: CU01 (cifrado con ñ y tildes, contraseña actual validada en el servicio, login sin distinguir mayúsculas), CU03 (baja y cambio de rol), CU07 (detalle con los datos del CU05 y mensaje del cambio de estado), CU09 y robustez (reglas de la evaluación, reconexión, tipo de documento, métodos comunes de los menús en `MenuBase`) y CU11/CU12 y limpieza (cancelación de una postulación Evaluada, validación del orden CES, error inesperado, archivos del repositorio).
+* Después, las pruebas unitarias (`feature/pruebas-unitarias-y-archivos-de-prueba`) y los cambios de la revisión del código, cada uno con sus pruebas: CU01, CU03, CU07, CU09 y CU11/CU12.
+* Por último, el formulario del CU03 (teléfono, calle y número obligatorios; Enter cancela el alta), el nombre de la opción del CU11 y la carpeta `util`.
 * **Higiene del repositorio:** el archivo de módulo de IntelliJ (`*.iml`) no se sube: IntelliJ lo arma a partir del `pom.xml`.
 
 ### Etapa 2 (`feature/estructura-etapa2`)
