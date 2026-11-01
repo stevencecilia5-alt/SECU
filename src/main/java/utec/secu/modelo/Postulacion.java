@@ -6,10 +6,11 @@ import java.util.List;
 
 /**
  * Representa una postulación y los datos asociados que se muestran en CU07:
- * postulante, convocatoria, departamento, sede, tutores, documentos y evaluadores.
+ * postulante (con los datos que registró en CU05), convocatoria, departamento, sede, tutores,
+ * documentos y evaluadores.
  *
  * @author Grupo 10 - ANGLO Deploy
- * @version 1.0
+ * @version 1.1
  */
 public class Postulacion {
 
@@ -35,6 +36,11 @@ public class Postulacion {
     private final String documentoPostulante;
     private final String tipoDocumento;
     private final String convocatoria;
+
+    // Información general de la convocatoria (CU05) y datos del postulante; solo los carga el detalle
+    private String tipoBeca;
+    private String descripcionConvocatoria;
+    private DatosPostulante datosPostulante;
 
     // Tutores
     private String tutorPrincipal;
@@ -103,6 +109,18 @@ public class Postulacion {
     public String getTipoDocumento() { return tipoDocumento; }
 
     public String getConvocatoria() { return convocatoria; }
+
+    public String getTipoBeca() { return tipoBeca; }
+    public void setTipoBeca(String tipoBeca) { this.tipoBeca = tipoBeca; }
+
+    public String getDescripcionConvocatoria() { return descripcionConvocatoria; }
+    public void setDescripcionConvocatoria(String descripcionConvocatoria) {
+        this.descripcionConvocatoria = descripcionConvocatoria;
+    }
+
+    /** @return Los datos del postulante registrados en CU05, o {@code null} si la postulación viene de un listado. */
+    public DatosPostulante getDatosPostulante() { return datosPostulante; }
+    public void setDatosPostulante(DatosPostulante datosPostulante) { this.datosPostulante = datosPostulante; }
 
     public String getTutorPrincipal() { return tutorPrincipal; }
     public void setTutorPrincipal(String tutorPrincipal) { this.tutorPrincipal = tutorPrincipal; }

@@ -91,6 +91,60 @@ INSERT INTO Postulantes (documento, tip_documento, nombre, apellido, correo, pai
     ('42543218', 'CI', 'Emilia', 'Cardozo', 'emilia.cardozo@gmail.com', 'Uruguay', 'Soriano', 'Mercedes', 'Uruguaya', 'Colón', '355', FALSE),
     ('38234562', 'CI', 'Federico', 'Martínez', 'federico.martinez@gmail.com', 'Uruguay', 'Rocha', 'Chuy', 'Uruguaya', 'Brasil', '128', FALSE);
 
+-- Resto de los datos del CU05 que muestra el detalle de CU07: apartamento, docente UTEC y actividad laboral
+UPDATE Postulantes SET apartamento = '302' WHERE correo = 'valentina.acosta@gmail.com';
+UPDATE Postulantes SET bis = TRUE WHERE correo = 'camila.rios@gmail.com';
+UPDATE Postulantes SET es_doc_utec = TRUE, act_laboral = 'Ayudante de laboratorio en UTEC' WHERE correo = 'sofia.olivera@gmail.com';
+UPDATE Postulantes SET act_laboral = 'Desarrollador de software en una empresa privada' WHERE correo = 'martina.silveira@gmail.com';
+UPDATE Postulantes SET act_laboral = 'Técnico de mantenimiento industrial' WHERE correo = 'nicolas.ferreira@gmail.com';
+
+-- Teléfono celular de cada postulante (CU05)
+INSERT INTO Celu_Postulantes (id_postulante, num_celular)
+SELECT id_postulante, CASE correo
+        WHEN 'gabriela.duarte@gmail.com' THEN '+5493454123456'
+        ELSE '09' || lpad((1000000 + id_postulante * 12345)::text, 7, '0') END
+FROM Postulantes;
+
+-- ---------- 4b. Formación de los postulantes (CU05: carrera, institución y posgrado) ----------
+INSERT INTO Carreras (nom_carrera) VALUES
+    ('Licenciatura en Tecnologías de la Información'),
+    ('Ingeniería en Energías Renovables'),
+    ('Ingeniería Agroambiental'),
+    ('Ingeniería Mecatrónica'),
+    ('Ingeniería en Logística');
+INSERT INTO Instituciones (nom_institucion) VALUES
+    ('Universidad de la República'),
+    ('Universidad Tecnológica');
+INSERT INTO Posgrados (id_institucion, nom_posgrado)
+SELECT i.id_institucion, v.nom_posgrado
+FROM (VALUES
+    ('Universidad de la República', 'Maestría en Ingeniería de la Energía'),
+    ('Universidad Tecnológica',     'Maestría en Ciencia de Datos')
+) AS v(nom_institucion, nom_posgrado)
+JOIN Instituciones i ON i.nom_institucion = v.nom_institucion;
+
+INSERT INTO Formaciones (id_postulante, id_carrera, id_posgrado)
+SELECT pt.id_postulante, ca.id_carrera, pg.id_posgrado
+FROM (VALUES
+    ('valentina.acosta@gmail.com',  'Licenciatura en Tecnologías de la Información', NULL),
+    ('tomas.mendez@gmail.com',      'Ingeniería en Energías Renovables',             NULL),
+    ('camila.rios@gmail.com',       'Ingeniería Agroambiental',                      NULL),
+    ('bruno.sosa@gmail.com',        'Ingeniería en Energías Renovables',             NULL),
+    ('florencia.vega@gmail.com',    'Ingeniería Mecatrónica',                        NULL),
+    ('matias.cabrera@gmail.com',    'Licenciatura en Tecnologías de la Información', NULL),
+    ('gabriela.duarte@gmail.com',   'Ingeniería Agroambiental',                      NULL),
+    ('joaquin.romero@gmail.com',    'Licenciatura en Tecnologías de la Información', NULL),
+    ('sofia.olivera@gmail.com',     'Ingeniería en Energías Renovables',             'Maestría en Ingeniería de la Energía'),
+    ('nicolas.ferreira@gmail.com',  'Ingeniería Mecatrónica',                        NULL),
+    ('lucas.bentancor@gmail.com',   'Ingeniería Agroambiental',                      NULL),
+    ('martina.silveira@gmail.com',  'Licenciatura en Tecnologías de la Información', 'Maestría en Ciencia de Datos'),
+    ('emilia.cardozo@gmail.com',    'Ingeniería Mecatrónica',                        NULL),
+    ('federico.martinez@gmail.com', 'Ingeniería en Logística',                       NULL)
+) AS v(correo, nom_carrera, nom_posgrado)
+JOIN Postulantes pt ON pt.correo = v.correo
+JOIN Carreras ca ON ca.nom_carrera = v.nom_carrera
+LEFT JOIN Posgrados pg ON pg.nom_posgrado = v.nom_posgrado;
+
 -- ---------- 5. Postulaciones ----------
 -- Una por postulante, todas en la primera convocatoria. Fechas de solicitud entre el
 -- 01/09/2026 y el 15/09/2026, salvo la de Federico Martinez (20/09/2026), fuera de ese rango.

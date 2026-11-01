@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -53,5 +55,22 @@ class PostulacionServiceTest {
                 () -> servicio.obtenerParaModificar(DatosDePrueba.administrador(), 9));
 
         assertEquals(PostulacionService.MSG_NO_MODIFICABLE, ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("CU07 (Mockito): un cambio de estado no permitido dice desde qué estado y a cuál")
+    void unCambioDeEstadoNoPermitidoDiceElMotivo() throws Exception {
+        Postulacion enRevision = new Postulacion(3, LocalDateTime.of(2026, 9, 4, 9, 30), "Camila", "Ríos",
+                "camila.rios@gmail.com", "45678912", "CI", "Becas de Iniciación a la Investigación 2026");
+        enRevision.setEstado(EstadoPostulacion.EN_REVISION);
+        PostulacionProxy proxy = mock(PostulacionProxy.class);
+        when(proxy.buscarPorId(any(), eq(3L))).thenReturn(enRevision);
+        PostulacionService servicio = new PostulacionService(proxy);
+
+        OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
+                () -> servicio.cambiarEstado(DatosDePrueba.administrador(), 3, EstadoPostulacion.APROBADA));
+
+        assertEquals("No se puede pasar de En revisión a Aprobada.", ex.getMessage());
+        verify(proxy, never()).cambiarEstado(any(), eq(3L), any(), any());
     }
 }

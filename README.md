@@ -53,9 +53,9 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
 
 3. **CU07 — Consulta y Gestión de Postulaciones:**
    * Búsqueda con un filtro por consulta: convocatoria, postulante, correo, documento, tutor, grupo de investigación, estado o rango de fechas (con validación cronológica), o listado de todas las postulaciones.
-   * Visualización del detalle completo multinivel: datos del postulante, carrera, departamento, sede, tutores asignados, documentos adjuntos cargados y evaluadores vinculados.
+   * Visualización del detalle completo con los datos registrados en CU05: datos personales y de contacto del postulante (documento, correo, celular, domicilio, nacionalidad y procedencia), formación (carrera, posgrado e institución), docencia en UTEC y actividad laboral, tipo y descripción de la convocatoria, datos del proyecto, departamento, sede, tutores asignados, documentos adjuntos cargados y evaluadores vinculados. El detalle del evaluador (CU09) muestra solo la propuesta, sin los datos personales.
    * **Modificación administrativa focalizada:** Permite modificar exclusivamente el departamento académico y la sede regional sobre postulaciones en estados editables (`Registrada` o `En revisión`), respetando la propuesta inmutable del postulante.
-   * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL.
+   * Transición controlada de estados (`Registrada`, `En revisión`, `No elegible`, `En evaluación`, `Evaluada`, `Aprobada`, `Rechazada`, `Cancelada`), aplicando control de concurrencia optimista contra PostgreSQL. Si se intenta un cambio no permitido, el mensaje dice desde qué estado y a cuál.
 
 ### Módulos Implementados en la Etapa 3
 
@@ -111,7 +111,7 @@ En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 ---
 
-## 6. Estructura de Paquetes del Proyecto (46 Clases)
+## 6. Estructura de Paquetes del Proyecto (47 Clases)
 
 El código fuente se organiza bajo la convención estándar de Maven en `src/main/java/utec/secu/`:
 
@@ -137,6 +137,7 @@ src/main/java/utec/secu/
 │   └── PerfilUsuarioFactory.java               # Factory Method para instanciar DAOs de perfiles
 ├── modelo/
 │   ├── Criterio.java                           # Criterio de la rúbrica fija con su sección, peso y puntaje (CU09)
+│   ├── DatosPostulante.java                    # Datos personales, de contacto y académicos del postulante registrados en CU05 (detalle de CU07)
 │   ├── DocumentoAdjunto.java                   # Documento cargado en una postulación, con la ruta del PDF (CU06)
 │   ├── EstadoPostulacion.java                  # Enum con estados y transiciones permitidas (CU07)
 │   ├── Evaluacion.java                         # Asignación de un evaluador y su evaluación (CU08, CU09)
@@ -204,7 +205,7 @@ docker compose up -d
 #### Opción B: Carga Manual del Script SQL (Instancia Local)
 Si se utiliza una instalación nativa de PostgreSQL sin Docker, ejecutar en DBeaver o pgAdmin sobre la base `secu_db`:
 1. `sql/01-init-secu.sql` (Recrea el esquema `PROYECTO`, genera las 24 tablas en 3FN, restricciones CHECK, UNIQUE, dominios e inserta semillas de catálogos y usuario administrador inicial).
-2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones; sus documentos adjuntos apuntan a los PDF de ejemplo de la carpeta `documentos/`).
+2. `sql/02-datos-prueba.sql` (Carga registros de prueba de postulaciones y convocatorias para probar todos los módulos: usuarios, convocatorias, postulantes con celular y formación, postulaciones en distintos estados (Aprobada, Rechazada y Cancelada se obtienen con el cambio de estado del CU07), evaluadores y evaluaciones; sus documentos adjuntos apuntan a los PDF de ejemplo de la carpeta `documentos/`).
 
 ---
 
@@ -274,7 +275,7 @@ Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y u
 * Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
 * Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
 
-### Estructura (33 pruebas)
+### Estructura (34 pruebas)
 ```
 src/test/java/utec/secu/
 ├── conexion/
@@ -288,7 +289,7 @@ src/test/java/utec/secu/
 └── servicio/
     ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
     ├── UsuarioServiceTest.java                 # CU01 y CU03 (12, cinco con Mockito)
-    ├── PostulacionServiceTest.java             # CU07: fechas y modificación (2, una con Mockito)
+    ├── PostulacionServiceTest.java             # CU07: fechas, modificación y cambio de estado (3, dos con Mockito)
     ├── EvaluacionServiceTest.java              # CU08 y CU09 (7, tres con Mockito)
     ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB (2)
     └── ResultadoServiceTest.java               # CU11: reglas del orden final CES (2)
@@ -299,7 +300,7 @@ src/test/java/utec/secu/
 | :--- | :---: | :--- |
 | **CU01** | 6 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); con `¿`, `€` o un emoji se rechaza y con ñ y tildes se acepta; confirmación igual a la nueva; con la contraseña actual incorrecta no se cambia nada y el login con el correo o la contraseña vacíos no llega a la base (estas dos con **Mockito**). |
 | **CU03** | 6 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta; un Administrador no se da de baja a sí mismo; no se cambia el rol de un evaluador con postulaciones asignadas (estas tres con **Mockito**: verifican además que no se guarde nada). |
-| **CU07** | 4 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica (**Mockito**). |
+| **CU07** | 5 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica y un cambio de estado no permitido dice el motivo (**Mockito**). |
 | **CU08 y CU09** | 7 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador, no se reemplaza a un evaluador que ya empezó a evaluar y finalizar con criterios sin puntaje la deja En proceso (FAQ 4) (**Mockito**). |
 | **Seguridad y patrones** | 6 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; la ñ y las tildes también se cifran; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
 | **CU06 y CU11** (opcionales) | 4 | PDF de 10 MB exactos aceptado y de 10 MB más 1 byte rechazado; mover una postulación en el orden CES sin escribir el motivo; al moverla, las que quedan corridas reciben la observación automática. |
