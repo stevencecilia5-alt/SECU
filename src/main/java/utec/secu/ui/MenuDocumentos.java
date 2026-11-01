@@ -8,7 +8,6 @@ import utec.secu.modelo.DocumentoAdjunto;
 import utec.secu.modelo.TipoDocumento;
 import utec.secu.modelo.Usuario;
 import utec.secu.servicio.DocumentoService;
-import utec.secu.servicio.PostulacionService;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -205,10 +204,6 @@ public class MenuDocumentos extends MenuBase {
         } else {
             System.out.println("Faltan documentos obligatorios: " + String.join(", ", faltantes) + ".");
         }
-    }
-
-    private long pedirId() {
-        return PostulacionService.parsearId(leer("Identificador de la postulación: "));
     }
 
     private static String formatoTamanio(long bytes) {

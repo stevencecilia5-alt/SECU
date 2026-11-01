@@ -80,6 +80,40 @@ class EvaluacionServiceTest {
         verify(proxy).guardarEvaluacion(any(), eq(e));   // se guardó como borrador
     }
 
+    @Test
+    @DisplayName("CU09 (Mockito): una evaluación Completada no se puede volver a guardar")
+    void unaEvaluacionCompletadaNoSeModifica() throws Exception {
+        // La base (Proxy simulado) ya tiene la evaluación Completada
+        EvaluacionProxy proxy = mock(EvaluacionProxy.class);
+        when(proxy.buscarMiEvaluacion(any(), eq(9L)))
+                .thenReturn(evaluacion(9, EstadoPostulacion.EVALUADA, Evaluacion.COMPLETADA));
+        EvaluacionService servicio = new EvaluacionService(proxy);
+        Evaluacion cambios = evaluacion(9, EstadoPostulacion.EVALUADA, Evaluacion.EN_PROCESO);
+        cambios.getCriterios().add(new Criterio(1, "A", 100, "Criterio 1", 2));
+
+        OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
+                () -> servicio.finalizar(DatosDePrueba.evaluador(), cambios));
+
+        assertEquals(EvaluacionService.MSG_COMPLETADA, ex.getMessage());
+        verify(proxy, never()).guardarEvaluacion(any(), any());   // no se pisó la evaluación
+    }
+
+    @Test
+    @DisplayName("CU09 (Mockito): un borrador sin puntajes ni comentario no se guarda y sigue Pendiente")
+    void unBorradorVacioNoSeGuarda() throws Exception {
+        EvaluacionProxy proxy = mock(EvaluacionProxy.class);
+        EvaluacionService servicio = new EvaluacionService(proxy);
+        Evaluacion e = evaluacion(3, EstadoPostulacion.EN_REVISION, Evaluacion.PENDIENTE);
+        e.getCriterios().add(new Criterio(1, "A", 100, "Criterio 1", null));
+
+        OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
+                () -> servicio.guardarBorrador(DatosDePrueba.evaluador(), e));
+
+        assertEquals(EvaluacionService.MSG_BORRADOR_VACIO, ex.getMessage());
+        assertEquals(Evaluacion.PENDIENTE, e.getEstado());
+        verify(proxy, never()).guardarEvaluacion(any(), any());
+    }
+
     // ---------- CU08: asignación de evaluadores ----------
 
     @Test

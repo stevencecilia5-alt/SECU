@@ -55,6 +55,16 @@ public class Evaluacion {
         return COMPLETADA.equals(estado);
     }
 
+    /** @return {@code true} si no tiene ningún puntaje ni comentario: el evaluador todavía no empezó. */
+    public boolean estaVacia() {
+        for (Criterio c : criterios) {
+            if (c.getPuntaje() != null) {
+                return false;
+            }
+        }
+        return comentario == null || comentario.isBlank();
+    }
+
     /** @return {@code true} si todos los criterios de la rúbrica tienen puntaje. */
     public boolean todosPuntuados() {
         for (Criterio c : criterios) {

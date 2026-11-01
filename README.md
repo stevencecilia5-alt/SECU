@@ -61,12 +61,12 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
 
 4. **CU08 + CU09 — Gestión del Proceso de Evaluación:**
    * **Asignación de evaluadores (CU08, Administrador):** asigna exactamente dos Evaluadores externos activos a cada postulación `En revisión`. La postulación pasa sola a `En evaluación` cuando tiene sus dos evaluadores y al menos uno empezó su evaluación. Permite consultar los evaluadores de una postulación y las postulaciones de un evaluador, reemplazar a un evaluador que todavía no registró su evaluación y registrar el juicio global de una postulación ya evaluada (`Evaluada`, `Aprobada` o `Rechazada`).
-   * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica.
+   * **Registro de evaluaciones (CU09, Evaluador externo):** cada evaluador ve solo las postulaciones que tiene asignadas y las califica con la rúbrica fija (6 secciones que suman 100% y 16 criterios con puntaje entero de 1 a 5). Puede guardar un borrador (`En proceso`) o finalizar (`Completada`), con el puntaje total ponderado por sección. Si la postulación ya tiene sus dos evaluadores, la primera evaluación guardada la pasa de `En revisión` a `En evaluación`. Cuando las dos evaluaciones están completas, la postulación pasa sola a `Evaluada`. Una evaluación completada ya no se modifica: el servicio lo vuelve a controlar al guardar. Un borrador sin ningún puntaje ni comentario no se guarda y la evaluación sigue `Pendiente`. La opción "Cancelar sin guardar" sale sin cambios.
 
 5. **CU06 — Gestión de Documentos Adjuntos (opción 5 del menú de postulaciones):**
    * Muestra los documentos que pide la convocatoria de la postulación (obligatorios y opcionales), los que ya están cargados con el tamaño de cada archivo, y avisa qué documentos obligatorios faltan.
    * Carga cada documento validando que el archivo exista, tenga formato PDF (extensión `.pdf` y contenido PDF), no esté vacío y pese como máximo 10 MB. Si el archivo no es válido, informa el motivo y vuelve a pedir la ruta.
-   * Cada tipo de documento se carga una sola vez, salvo *Otros documentos adicionales*, que admite hasta 4 archivos.
+   * Cada tipo de documento se carga una sola vez, salvo *Otros documentos adicionales*, que admite hasta 4 archivos. El servicio controla además que el tipo sea uno de los que pide la convocatoria.
    * Permite abrir un documento con el visor de PDF del equipo y quitar un documento cargado por error. El evaluador también abre los documentos de sus postulaciones asignadas, desde *Ver detalle de una postulación asignada* (CU09).
    * Solo se cargan o quitan documentos de postulaciones `Registrada` o `En revisión`. El Administrador carga los documentos que entregó el postulante.
    * El archivo se copia a la carpeta `adjuntos/` y la base guarda solo su ruta (ver la sección 9).
@@ -118,7 +118,7 @@ El código fuente se organiza bajo la convención estándar de Maven en `src/mai
 ```
 src/main/java/utec/secu/
 ├── conexion/
-│   └── ConexionBD.java                         # Singleton: Conexión JDBC compartida a PostgreSQL
+│   └── ConexionBD.java                         # Singleton: Conexión JDBC compartida a PostgreSQL (se vuelve a abrir si se cortó)
 ├── dao/
 │   ├── AdministradorDAO.java                   # DAO específico para perfil Administrador
 │   ├── DocumentoDAO.java                       # DAO de documentos adjuntos y tipos por convocatoria (CU06)
@@ -164,7 +164,7 @@ src/main/java/utec/secu/
 └── ui/
     ├── Main.java                               # Punto de entrada de la aplicación y ciclo general
     ├── MenuAsignacion.java                     # Submenú interactivo para CU08 (asignación de evaluadores)
-    ├── MenuBase.java                           # Clase abstracta base para menús de consola y lecturas
+    ├── MenuBase.java                           # Clase abstracta base de los menús: lecturas, confirmaciones, listas y formatos comunes
     ├── MenuDocumentos.java                     # Submenú interactivo para CU06 (documentos adjuntos)
     ├── MenuInicio.java                         # Submenú de inicio de sesión y recuperación (CU01)
     ├── MenuMisEvaluaciones.java                # Submenú interactivo para CU09 (evaluaciones del evaluador)
@@ -275,7 +275,7 @@ Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y u
 * Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
 * Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
 
-### Estructura (34 pruebas)
+### Estructura (37 pruebas)
 ```
 src/test/java/utec/secu/
 ├── conexion/
@@ -290,8 +290,8 @@ src/test/java/utec/secu/
     ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
     ├── UsuarioServiceTest.java                 # CU01 y CU03 (12, cinco con Mockito)
     ├── PostulacionServiceTest.java             # CU07: fechas, modificación y cambio de estado (3, dos con Mockito)
-    ├── EvaluacionServiceTest.java              # CU08 y CU09 (7, tres con Mockito)
-    ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB (2)
+    ├── EvaluacionServiceTest.java              # CU08 y CU09 (9, cinco con Mockito)
+    ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB y tipo de documento (3)
     └── ResultadoServiceTest.java               # CU11: reglas del orden final CES (2)
 ```
 
@@ -301,9 +301,9 @@ src/test/java/utec/secu/
 | **CU01** | 6 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); con `¿`, `€` o un emoji se rechaza y con ñ y tildes se acepta; confirmación igual a la nueva; con la contraseña actual incorrecta no se cambia nada y el login con el correo o la contraseña vacíos no llega a la base (estas dos con **Mockito**). |
 | **CU03** | 6 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta; un Administrador no se da de baja a sí mismo; no se cambia el rol de un evaluador con postulaciones asignadas (estas tres con **Mockito**: verifican además que no se guarde nada). |
 | **CU07** | 5 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica y un cambio de estado no permitido dice el motivo (**Mockito**). |
-| **CU08 y CU09** | 7 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador, no se reemplaza a un evaluador que ya empezó a evaluar y finalizar con criterios sin puntaje la deja En proceso (FAQ 4) (**Mockito**). |
+| **CU08 y CU09** | 9 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador y no se reemplaza a un evaluador que ya empezó a evaluar; finalizar con criterios sin puntaje la deja En proceso (FAQ 4); una evaluación Completada no se vuelve a guardar y un borrador vacío no se guarda (**Mockito**). |
 | **Seguridad y patrones** | 6 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; la ñ y las tildes también se cifran; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
-| **CU06 y CU11** (opcionales) | 4 | PDF de 10 MB exactos aceptado y de 10 MB más 1 byte rechazado; mover una postulación en el orden CES sin escribir el motivo; al moverla, las que quedan corridas reciben la observación automática. |
+| **CU06 y CU11** (opcionales) | 5 | PDF de 10 MB exactos aceptado y de 10 MB más 1 byte rechazado; un tipo de documento que no pide la convocatoria se rechaza; mover una postulación en el orden CES sin escribir el motivo; al moverla, las que quedan corridas reciben la observación automática. |
 
 Cada prueba con datos inválidos verifica también el mensaje de la excepción personalizada que ve el usuario en la consola.
 

@@ -1,6 +1,7 @@
 package utec.secu.ui;
 
 import utec.secu.modelo.Usuario;
+import utec.secu.servicio.PostulacionService;
 
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -9,11 +10,13 @@ import org.jline.reader.UserInterruptException;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Scanner;
 
 /**
  * Base común de los menús de consola: guarda el Scanner y el usuario de la sesión,
- * y tiene los métodos para leer datos y pedir confirmaciones.
+ * y tiene los métodos para leer datos, pedir confirmaciones y elegir de una lista, y los
+ * formatos que usan varios menús.
  * Cada submenú ({@link MenuUsuarios}, {@link MenuPostulaciones}, etc.) la extiende para no repetirlos.
  *
  * @author Grupo 10 - ANGLO Deploy
@@ -81,13 +84,37 @@ public abstract class MenuBase {
             if (entrada.isEmpty()) {
                 return 0;
             }
-            if (entrada.matches("\\d{1,3}")) {
-                int opcion = Integer.parseInt(entrada);
-                if (opcion >= 1 && opcion <= cantidad) {
-                    return opcion;
-                }
+            int opcion = convertirOpcion(entrada, cantidad);
+            if (opcion > 0) {
+                return opcion;
             }
             System.out.println("Opción inválida.");
         }
+    }
+
+    /** @return La opción escrita si es un número de 1 a {@code maximo}, o 0 si no lo es. */
+    protected static int convertirOpcion(String entrada, int maximo) {
+        if (entrada.matches("\\d{1,3}")) {
+            int opcion = Integer.parseInt(entrada);
+            if (opcion >= 1 && opcion <= maximo) {
+                return opcion;
+            }
+        }
+        return 0;
+    }
+
+    /** Pide el identificador de una postulación (CU06, CU07, CU08 y CU09). */
+    protected long pedirId() {
+        return PostulacionService.parsearId(leer("Identificador de la postulación: "));
+    }
+
+    /** @return El puntaje con dos decimales, o "-" si todavía no tiene. */
+    protected static String formatoPuntaje(Double puntaje) {
+        return puntaje == null ? "-" : String.format(Locale.ROOT, "%.2f", puntaje);
+    }
+
+    /** @return El texto recortado a {@code maximo} caracteres, con "..." al final si no entra en la columna. */
+    protected static String recortar(String texto, int maximo) {
+        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 3) + "...";
     }
 }

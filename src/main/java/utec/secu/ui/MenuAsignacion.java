@@ -7,10 +7,8 @@ import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.Usuario;
 import utec.secu.servicio.EvaluacionService;
-import utec.secu.servicio.PostulacionService;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Scanner;
 
 /**
@@ -141,17 +139,5 @@ public class MenuAsignacion extends MenuBase {
             System.out.printf("%-24s %-30s %-12s %s%n", recortar(e.getNombreEvaluador(), 24),
                     recortar(e.getCorreoEvaluador(), 30), e.getEstado(), formatoPuntaje(e.getPuntajeTotal()));
         }
-    }
-
-    private long pedirId() {
-        return PostulacionService.parsearId(leer("Identificador de la postulación: "));
-    }
-
-    static String formatoPuntaje(Double puntaje) {
-        return puntaje == null ? "-" : String.format(Locale.ROOT, "%.2f", puntaje);
-    }
-
-    private static String recortar(String texto, int maximo) {
-        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 3) + "...";
     }
 }

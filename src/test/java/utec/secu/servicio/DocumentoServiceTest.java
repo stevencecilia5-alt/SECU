@@ -3,18 +3,20 @@ package utec.secu.servicio;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import utec.secu.excepciones.DatoInvalidoException;
+import utec.secu.modelo.TipoDocumento;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Pruebas de CU06 (opcional): tamaño máximo de 10 MB por archivo.
+ * Pruebas de CU06 (opcional): tamaño máximo de 10 MB por archivo y tipos de documento de la convocatoria.
  */
 class DocumentoServiceTest {
 
@@ -40,6 +42,20 @@ class DocumentoServiceTest {
         } finally {
             Files.delete(archivo);
         }
+    }
+
+    @Test
+    @DisplayName("CU06: un tipo de documento que no pide la convocatoria se rechaza")
+    void tipoQueNoPideLaConvocatoriaSeRechaza() {
+        TipoDocumento planDeTrabajo = new TipoDocumento(1, "Plan de trabajo", true);
+        TipoDocumento constancia = new TipoDocumento(3, "Constancia de inscripción al posgrado", false);
+        List<TipoDocumento> tiposDeLaConvocatoria = List.of(planDeTrabajo);
+
+        DatoInvalidoException ex = assertThrows(DatoInvalidoException.class,
+                () -> DocumentoService.verificarTipoDeLaConvocatoria(constancia, tiposDeLaConvocatoria));
+
+        assertEquals(DocumentoService.MSG_TIPO_NO_PEDIDO, ex.getMessage());
+        DocumentoService.verificarTipoDeLaConvocatoria(planDeTrabajo, tiposDeLaConvocatoria);   // este sí: no lanza
     }
 
     /** Crea un archivo temporal .pdf que empieza con la marca de los PDF y tiene el tamaño pedido. */

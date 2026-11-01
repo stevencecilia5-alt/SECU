@@ -52,6 +52,7 @@ public class DocumentoService {
 
     public static final String MSG_NO_MODIFICABLE =
             "Solo se pueden cargar o quitar documentos de postulaciones Registradas o En revisión.";
+    public static final String MSG_TIPO_NO_PEDIDO = "La convocatoria de la postulación no pide ese tipo de documento.";
     public static final String MSG_YA_CARGADO = "Ese documento ya está cargado. Para cambiarlo, primero quitá el actual.";
     public static final String MSG_MAXIMO_ADICIONALES = "Ya se cargaron los 4 documentos adicionales permitidos.";
     public static final String MSG_NO_EXISTE = "No se encontró el archivo indicado.";
@@ -122,12 +123,14 @@ public class DocumentoService {
      * Si la ruta no se puede guardar en la base, se borra la copia.
      *
      * @param ruta Ruta del archivo PDF en el equipo.
-     * @throws DatoInvalidoException         Si el archivo no existe, no es PDF, está vacío o supera 10 MB.
+     * @throws DatoInvalidoException         Si la convocatoria no pide ese tipo de documento, o el archivo no
+     *                                       existe, no es PDF, está vacío o supera 10 MB.
      * @throws OperacionNoPermitidaException Si la postulación no admite cambios, el tipo ya está cargado,
      *                                       ya hay 4 adicionales o falló la copia del archivo.
      */
     public void cargar(Usuario sesion, long idPostulacion, TipoDocumento tipo, String ruta) {
         verificarModificable(sesion, idPostulacion);
+        verificarTipoDeLaConvocatoria(tipo, listarTipos(sesion, idPostulacion));
         Path origen = validarArchivo(ruta);
         verificarTipo(tipo, listarDocumentos(sesion, idPostulacion));
 
@@ -178,6 +181,21 @@ public class DocumentoService {
             }
         }
         return cantidad;
+    }
+
+    /**
+     * El tipo tiene que ser uno de los que pide la convocatoria de la postulación. El menú solo ofrece
+     * esos, pero el servicio lo vuelve a controlar para no depender del menú.
+     *
+     * @throws DatoInvalidoException Si la convocatoria no pide ese tipo de documento.
+     */
+    public static void verificarTipoDeLaConvocatoria(TipoDocumento tipo, List<TipoDocumento> tiposDeLaConvocatoria) {
+        for (TipoDocumento t : tiposDeLaConvocatoria) {
+            if (t.getIdDocuTipo() == tipo.getIdDocuTipo()) {
+                return;
+            }
+        }
+        throw new DatoInvalidoException(MSG_TIPO_NO_PEDIDO);
     }
 
     /**
