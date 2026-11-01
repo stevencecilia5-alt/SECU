@@ -36,6 +36,14 @@ SELECT id_usuario FROM Usuarios WHERE rol = 'Evaluador externo';
 INSERT INTO Tele_Usuarios (id_usuario, num_telefono)
 SELECT id_usuario, '099123456' FROM Usuarios WHERE correo = 'eval1@utec.edu.uy';
 
+-- ---------- 1b. Segundo Administrador ----------
+-- Sin convocatorias a su cargo: con él se prueba que no se cambia el rol de un
+-- Administrador que tiene convocatorias (CU03).
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
+VALUES ('45123784', 'admin2@secu.edu.uy', '2"w''u$YuC=BPA', 'Paula', 'Núñez', 'Uruguaya', 'Activo', 'Administrador', FALSE);
+INSERT INTO Administradores (id_usuario)
+SELECT id_usuario FROM Usuarios WHERE correo = 'admin2@secu.edu.uy';
+
 -- ---------- 2. Convocatorias ----------
 -- La primera tiene postulaciones en todos los estados; la segunda no tiene ninguna (CU12).
 INSERT INTO Convocatorias (id_usuario, nom_convocatoria, fec_apertura, fec_cierre, ani_convocatoria,

@@ -90,6 +90,16 @@ public class SeguridadProxy extends ProxyBase {
         return usuarioDAO.modificar(datos);
     }
 
+    public boolean tieneAsignaciones(Usuario usuarioSesion, String ci) throws SQLException {
+        validarPermisoAdmin(usuarioSesion, "modificar usuarios");
+        return usuarioDAO.tieneAsignaciones(ci);
+    }
+
+    public boolean tieneConvocatorias(Usuario usuarioSesion, String ci) throws SQLException {
+        validarPermisoAdmin(usuarioSesion, "modificar usuarios");
+        return usuarioDAO.tieneConvocatorias(ci);
+    }
+
     public String restablecerContrasenia(Usuario usuarioSesion, String ci) throws SQLException {
         validarPermisoAdmin(usuarioSesion, "restablecer contraseñas de usuarios");
         return usuarioDAO.restablecerContrasenia(ci);

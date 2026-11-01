@@ -38,6 +38,14 @@ public class UsuarioService {
     public static final String MSG_NO_COINCIDEN = "Las contraseñas no coinciden.";
     public static final String MSG_ACTUAL_INCORRECTA = "La contraseña actual no es correcta.";
     public static final String MSG_SIN_CAMBIO_PENDIENTE = "No hay un cambio de contraseña obligatorio pendiente.";
+    public static final String MSG_BAJA_PROPIA =
+            "No podés darte de baja a vos mismo: lo tiene que hacer otro Administrador.";
+    public static final String MSG_ROL_PROPIO =
+            "No podés cambiar tu propio rol: lo tiene que hacer otro Administrador.";
+    public static final String MSG_ROL_CON_ASIGNACIONES =
+            "No se puede cambiar el rol: el evaluador tiene postulaciones asignadas.";
+    public static final String MSG_ROL_CON_CONVOCATORIAS =
+            "No se puede cambiar el rol: el Administrador tiene convocatorias a su cargo.";
     public static final String MSG_RECUPERACION = "Si el correo corresponde a un usuario activo, se generó "
             + "una nueva contraseña temporal y se envió al correo registrado.";
     public static final String MSG_NOMBRE = "El Nombre no es válido: debe tener entre 2 y 50 caracteres "
@@ -267,7 +275,8 @@ public class UsuarioService {
 
     /**
      * Modifica los datos de un usuario existente. La cédula no se modifica y el estado
-     * se cambia solo con la baja o la reactivación.
+     * se cambia solo con la baja o la reactivación. El rol se puede cambiar según
+     * {@link #verificarCambioDeRol}.
      */
     public void modificarUsuario(Usuario sesion, Usuario datos) {
         try {
@@ -280,9 +289,38 @@ public class UsuarioService {
             if (!ROLES.contains(datos.getRol())) {
                 throw new DatoInvalidoException(MSG_ROL);
             }
+            verificarCambioDeRol(sesion, actual, datos.getRol());
             verificarCorreoDisponible(sesion, datos.getCorreo(), datos.getCi());
             if (!seguridadProxy.modificarUsuario(sesion, datos)) {
                 throw new DatoInvalidoException(MSG_NO_EXISTE);
+            }
+        } catch (SQLException e) {
+            throw new ErrorDeDatosException(e);
+        }
+    }
+
+    /**
+     * Controla que el rol del usuario se pueda cambiar. Un Administrador no cambia su propio rol, y no
+     * se cambia el rol de quien tiene datos que dependen de él: las postulaciones asignadas de un
+     * evaluador (CU08) o las convocatorias de un Administrador. La consola la llama apenas se elige
+     * el rol nuevo.
+     *
+     * @throws OperacionNoPermitidaException Si el rol no se puede cambiar; el mensaje dice por qué.
+     */
+    public void verificarCambioDeRol(Usuario sesion, Usuario actual, String rolNuevo) {
+        if (rolNuevo == null || rolNuevo.equals(actual.getRol())) {
+            return;
+        }
+        if (actual.getCi().equals(sesion.getCi())) {
+            throw new OperacionNoPermitidaException(MSG_ROL_PROPIO);
+        }
+        try {
+            String ci = actual.getCi();
+            if ("Evaluador externo".equals(actual.getRol()) && seguridadProxy.tieneAsignaciones(sesion, ci)) {
+                throw new OperacionNoPermitidaException(MSG_ROL_CON_ASIGNACIONES);
+            }
+            if ("Administrador".equals(actual.getRol()) && seguridadProxy.tieneConvocatorias(sesion, ci)) {
+                throw new OperacionNoPermitidaException(MSG_ROL_CON_CONVOCATORIAS);
             }
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
@@ -308,7 +346,7 @@ public class UsuarioService {
     public void darDeBaja(Usuario sesion, String ci) {
         try {
             Usuario u = obtenerUsuario(sesion, ci);
-            verificarPuedeDarDeBaja(u);
+            verificarPuedeDarDeBaja(sesion, u);
             if (!seguridadProxy.darDeBajaUsuario(sesion, u.getCi())) {
                 throw new OperacionNoPermitidaException("Solo se puede dar de baja a un usuario activo.");
             }
@@ -339,8 +377,16 @@ public class UsuarioService {
         }
     }
 
-    /** @throws OperacionNoPermitidaException Si el usuario no está Activo. */
-    public static void verificarPuedeDarDeBaja(Usuario u) {
+    /**
+     * Un Administrador no se da de baja a sí mismo: así siempre queda al menos uno activo, el que
+     * está en sesión, para reactivar a los demás.
+     *
+     * @throws OperacionNoPermitidaException Si es el propio usuario en sesión o no está Activo.
+     */
+    public static void verificarPuedeDarDeBaja(Usuario sesion, Usuario u) {
+        if (u.getCi().equals(sesion.getCi())) {
+            throw new OperacionNoPermitidaException(MSG_BAJA_PROPIA);
+        }
         if (!"Activo".equals(u.getEstado())) {
             throw new OperacionNoPermitidaException("Solo se puede dar de baja a un usuario activo.");
         }

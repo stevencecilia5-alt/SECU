@@ -3,6 +3,7 @@ package utec.secu.servicio;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import utec.secu.excepciones.DatoInvalidoException;
+import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Usuario;
 import utec.secu.seguridad.SeguridadProxy;
 
@@ -135,5 +136,38 @@ class UsuarioServiceTest {
 
         assertEquals(UsuarioService.MSG_CEDULA_DUPLICADA, ex.getMessage());
         verify(proxy, never()).crearUsuario(any(), any());   // el alta no llegó a guardarse
+    }
+
+    @Test
+    @DisplayName("CU03 (Mockito): un Administrador no se puede dar de baja a sí mismo")
+    void unAdministradorNoSeDaDeBajaASiMismo() throws Exception {
+        Usuario admin = DatosDePrueba.administrador();
+        SeguridadProxy proxy = mock(SeguridadProxy.class);
+        when(proxy.buscarPorCi(any(), eq(admin.getCi()))).thenReturn(admin);
+        UsuarioService servicio = new UsuarioService(proxy);
+
+        OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
+                () -> servicio.darDeBaja(admin, admin.getCi()));
+
+        assertEquals(UsuarioService.MSG_BAJA_PROPIA, ex.getMessage());
+        verify(proxy, never()).darDeBajaUsuario(any(), any());   // sigue habiendo un Administrador activo
+    }
+
+    @Test
+    @DisplayName("CU03 (Mockito): no se cambia el rol de un evaluador con postulaciones asignadas")
+    void noSeCambiaElRolDeUnEvaluadorConAsignaciones() throws Exception {
+        Usuario evaluador = DatosDePrueba.evaluador();
+        SeguridadProxy proxy = mock(SeguridadProxy.class);
+        when(proxy.buscarPorCi(any(), eq(evaluador.getCi()))).thenReturn(evaluador);
+        when(proxy.tieneAsignaciones(any(), eq(evaluador.getCi()))).thenReturn(true);
+        UsuarioService servicio = new UsuarioService(proxy);
+        Usuario datos = new Usuario(evaluador.getCi(), evaluador.getCorreo(), "Lucía", "Fernández",
+                "Administrador", "Activo", false, "Uruguaya", null, null, null);
+
+        OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
+                () -> servicio.modificarUsuario(DatosDePrueba.administrador(), datos));
+
+        assertEquals(UsuarioService.MSG_ROL_CON_ASIGNACIONES, ex.getMessage());
+        verify(proxy, never()).modificarUsuario(any(), any());   // no llega a la base
     }
 }

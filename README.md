@@ -45,10 +45,11 @@ El sistema cuenta con **3 módulos asignados desarrollados, integrados y operati
 2. **CU03 — Gestión de Usuarios y Roles:**
    * Alta de nuevos usuarios (`Administrador` o `Evaluador externo`) con generación automática de contraseñas temporales aleatorias de 8 caracteres.
    * Envío desacoplado de credenciales temporales a la bandeja simulada local (`correos_simulados/bandeja_salida.txt`), sin exponer jamás contraseñas en consola ni en logs.
-   * Validaciones de negocio en capa de servicio: formato y longitud de nombres/apellidos (2 a 50 caracteres), algoritmo de validación de dígito verificador de cédula de identidad uruguaya, formato de correo y control estricto de unicidad de CI y correo institucional en base de datos.
+   * Validaciones de negocio en capa de servicio: formato y longitud de nombres/apellidos (2 a 50 caracteres), algoritmo de validación de dígito verificador de cédula de identidad uruguaya, formato de correo y control estricto de unicidad de CI y correo institucional en base de datos. El teléfono y la calle son opcionales: si se ingresan, se validan.
    * **Reintento del dato inválido:** ante un dato inválido, el sistema muestra qué regla no se cumple y vuelve a pedir solo ese dato, sin perder los ya ingresados.
    * Consulta tabular de usuarios en consola con columnas alineadas.
    * Inactivación lógica (baja) y reactivación/restablecimiento de credenciales temporales.
+   * Un Administrador no puede darse de baja ni cambiar su propio rol: así siempre queda uno activo para reactivar a los demás. Tampoco se cambia el rol de un evaluador con postulaciones asignadas ni de un Administrador con convocatorias a su cargo; el mensaje dice el motivo y vuelve a pedir solo el rol, sin perder los demás datos ingresados.
 
 3. **CU07 — Consulta y Gestión de Postulaciones:**
    * Búsqueda con un filtro por consulta: convocatoria, postulante, correo, documento, tutor, grupo de investigación, estado o rango de fechas (con validación cronológica), o listado de todas las postulaciones.
@@ -273,7 +274,7 @@ Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y u
 * Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
 * Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
 
-### Estructura (31 pruebas)
+### Estructura (33 pruebas)
 ```
 src/test/java/utec/secu/
 ├── conexion/
@@ -286,7 +287,7 @@ src/test/java/utec/secu/
 │   └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (4)
 └── servicio/
     ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
-    ├── UsuarioServiceTest.java                 # CU01 y CU03 (10, tres con Mockito)
+    ├── UsuarioServiceTest.java                 # CU01 y CU03 (12, cinco con Mockito)
     ├── PostulacionServiceTest.java             # CU07: fechas y modificación (2, una con Mockito)
     ├── EvaluacionServiceTest.java              # CU08 y CU09 (7, tres con Mockito)
     ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB (2)
@@ -297,7 +298,7 @@ src/test/java/utec/secu/
 | Módulo / componente | Pruebas | Reglas comprobadas |
 | :--- | :---: | :--- |
 | **CU01** | 6 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); con `¿`, `€` o un emoji se rechaza y con ñ y tildes se acepta; confirmación igual a la nueva; con la contraseña actual incorrecta no se cambia nada y el login con el correo o la contraseña vacíos no llega a la base (estas dos con **Mockito**). |
-| **CU03** | 4 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta (con **Mockito**: verifica además que no se guarde nada). |
+| **CU03** | 6 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta; un Administrador no se da de baja a sí mismo; no se cambia el rol de un evaluador con postulaciones asignadas (estas tres con **Mockito**: verifican además que no se guarde nada). |
 | **CU07** | 4 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica (**Mockito**). |
 | **CU08 y CU09** | 7 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador, no se reemplaza a un evaluador que ya empezó a evaluar y finalizar con criterios sin puntaje la deja En proceso (FAQ 4) (**Mockito**). |
 | **Seguridad y patrones** | 6 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; la ñ y las tildes también se cifran; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
@@ -312,6 +313,7 @@ Cada prueba con datos inválidos verifica también el mensaje de la excepción p
 | Rol | Correo Electrónico | Contraseña Inicial | Comportamiento en Consola |
 | :--- | :--- | :--- | :--- |
 | **Administrador** | `admin@secu.edu.uy` | `Proyecto2026!` | Acceso completo a CU03 (Usuarios), CU07 (Postulaciones, con CU06 Documentos adjuntos, CU11 Orden final CES y CU12 Vista consolidada) y CU08 (Asignación de evaluadores). Ingreso directo sin cambio forzado (`req_cam_clave = FALSE`). |
+| **Segundo Administrador** | `admin2@secu.edu.uy` | `Proyecto2026!` | El mismo acceso, sin convocatorias a su cargo. Sirve para probar en CU03 que no se cambia el rol de un Administrador con convocatorias. |
 | **Usuario Nuevo (Alta CU03)** | *(Correo asignado)* | *(Clave temporal de 8 caracteres)* | Acceso inicial forzado a cambio de contraseña (`req_cam_clave = TRUE`). La clave temporal se consulta en `correos_simulados/bandeja_salida.txt`. |
 
 ---

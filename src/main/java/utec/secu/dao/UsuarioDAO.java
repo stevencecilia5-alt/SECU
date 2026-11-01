@@ -300,6 +300,18 @@ public class UsuarioDAO {
         }
     }
 
+    /** @return {@code true} si el evaluador con esa cédula tiene postulaciones asignadas (CU08). */
+    public boolean tieneAsignaciones(String ci) throws SQLException {
+        return existe("SELECT 1 FROM eval_exte_postulaciones ep JOIN usuarios u ON u.id_usuario = ep.id_usuario "
+                + "WHERE u.ci = ?", ci, null);
+    }
+
+    /** @return {@code true} si el Administrador con esa cédula tiene convocatorias a su cargo. */
+    public boolean tieneConvocatorias(String ci) throws SQLException {
+        return existe("SELECT 1 FROM convocatorias c JOIN usuarios u ON u.id_usuario = c.id_usuario "
+                + "WHERE u.ci = ?", ci, null);
+    }
+
     // =========================================================================
     // AUXILIARES
     // =========================================================================

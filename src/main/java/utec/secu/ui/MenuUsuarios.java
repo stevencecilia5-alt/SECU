@@ -130,7 +130,7 @@ public class MenuUsuarios extends MenuBase {
         String numero = pedirDato("Número [" + textoOVacio(actual.getNumDomicilio()) + "]: ",
                 "numero", actual.getNumDomicilio());
         System.out.println(LISTA_ROLES);
-        String rol = pedirDato("Rol [" + actual.getRol() + "]: ", "rol", actual.getRol());
+        String rol = pedirRol(actual);
 
         if (!confirmar("¿Confirmás los cambios? (s/n): ")) {
             System.out.println("Cambios descartados.");
@@ -140,6 +140,22 @@ public class MenuUsuarios extends MenuBase {
                 actual.isRequiereCambioClave(), nacionalidad, calle, numero, telefono);
         servicio.modificarUsuario(sesion, datos);
         System.out.println("Usuario modificado correctamente.");
+    }
+
+    /**
+     * Pide el rol nuevo. Si no se puede cambiar (CU03), muestra el motivo y lo vuelve a pedir, sin perder
+     * los datos ya ingresados (Mantis #0044248). Con Enter se conserva el rol actual, que siempre se permite.
+     */
+    private String pedirRol(Usuario actual) {
+        while (true) {
+            String rol = pedirDato("Rol [" + actual.getRol() + "]: ", "rol", actual.getRol());
+            try {
+                servicio.verificarCambioDeRol(sesion, actual, rol);   // aviso temprano; el servicio vuelve a controlar
+                return rol;
+            } catch (OperacionNoPermitidaException ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
     }
 
     private void restablecer() {
@@ -153,7 +169,7 @@ public class MenuUsuarios extends MenuBase {
     private void darDeBaja() {
         listar();
         Usuario u = servicio.obtenerUsuario(sesion, leer("\nCédula: "));
-        UsuarioService.verificarPuedeDarDeBaja(u);
+        UsuarioService.verificarPuedeDarDeBaja(sesion, u);
         if (!confirmar("¿Confirmás la baja del usuario? (s/n): ")) {
             System.out.println("Operación cancelada.");
             return;
