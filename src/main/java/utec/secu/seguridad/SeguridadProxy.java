@@ -41,6 +41,15 @@ public class SeguridadProxy extends ProxyBase {
     // 2. CAMBIO DE CONTRASEÑA (con sesión)
     // =========================================================================
 
+    /**
+     * Comprueba la contraseña vigente del propio usuario en sesión (CU01, cambio de contraseña).
+     * Busca por cédula, que no cambia, para que funcione aunque el usuario haya modificado su correo.
+     */
+    public boolean verificarContrasenia(Usuario usuarioSesion, String contrasenia) throws SQLException {
+        validarSesionActiva(usuarioSesion);
+        return usuarioDAO.verificarContrasenia(usuarioSesion.getCi(), contrasenia);
+    }
+
     /** Cambia la contraseña del propio usuario en sesión (CU01). Nadie puede cambiar una contraseña ajena. */
     public boolean cambiarContrasenia(Usuario usuarioSesion, String nuevaContrasenia) throws SQLException {
         validarSesionActiva(usuarioSesion);

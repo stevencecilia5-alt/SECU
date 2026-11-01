@@ -722,7 +722,7 @@ CREATE UNIQUE INDEX UK_Conv_unica_publicada
 -- Almacenada cifrada con el algoritmo propio y reversible de
 -- ServicioCifrado, que desplaza cada caracter segun el caracter de la
 -- clave (una frase) que le corresponde por su posicion.
--- El valor debe coincidir con ServicioCifrado.hashPassword("Proyecto2026!");
+-- El valor debe coincidir con ServicioCifrado.cifrarContrasenia("Proyecto2026!");
 -- si se modifica el algoritmo o la clave, hay que regenerarlo. La comilla
 -- simple del valor cifrado va duplicada ('') porque asi se escribe en SQL.
 

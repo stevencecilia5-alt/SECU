@@ -42,18 +42,25 @@ public class UsuarioDAO {
     // =========================================================================
 
     /**
-     * Autentica a un usuario Activo por correo y contraseña.
+     * Autentica a un usuario Activo por correo y contraseña. El correo se compara sin distinguir
+     * mayúsculas, igual que en la recuperación de contraseña y en el control de correos repetidos.
      *
      * @return El usuario autenticado, o {@code null} si las credenciales no coinciden o está Inactivo.
      */
     public Usuario autenticar(String correo, String contrasenia) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
-        String sql = SELECT_USUARIO + "WHERE u.correo = ? AND u.contrasenia = ? AND u.estado = 'Activo'";
+        String sql = SELECT_USUARIO + "WHERE lower(u.correo) = lower(?) AND u.contrasenia = ? AND u.estado = 'Activo'";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, correo);
-            ps.setString(2, ServicioCifrado.hashPassword(contrasenia));
+            ps.setString(2, ServicioCifrado.cifrarContrasenia(contrasenia));
             return leerUno(ps);
         }
+    }
+
+    /** @return {@code true} si la contraseña es la vigente del usuario Activo con esa cédula (CU01). */
+    public boolean verificarContrasenia(String ci, String contrasenia) throws SQLException {
+        return existe("SELECT 1 FROM usuarios WHERE ci = ? AND contrasenia = ? AND estado = 'Activo'",
+                ci, ServicioCifrado.cifrarContrasenia(contrasenia));
     }
 
     /** Guarda una nueva contraseña elegida por el usuario y quita el cambio obligatorio. */
@@ -61,7 +68,7 @@ public class UsuarioDAO {
         Connection con = ConexionBD.getInstancia().getConnection();
         String sql = "UPDATE usuarios SET contrasenia = ?, req_cam_clave = FALSE WHERE ci = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, ServicioCifrado.hashPassword(nuevaContrasenia));
+            ps.setString(1, ServicioCifrado.cifrarContrasenia(nuevaContrasenia));
             ps.setString(2, ci);
             return ps.executeUpdate() > 0;
         }
@@ -78,7 +85,7 @@ public class UsuarioDAO {
         Connection con = ConexionBD.getInstancia().getConnection();
         String sql = "UPDATE usuarios SET contrasenia = ?, req_cam_clave = TRUE WHERE ci = ? AND estado = 'Activo'";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, ServicioCifrado.hashPassword(temporal));
+            ps.setString(1, ServicioCifrado.cifrarContrasenia(temporal));
             ps.setString(2, ci);
             return ps.executeUpdate() > 0 ? temporal : null;
         }
@@ -98,7 +105,7 @@ public class UsuarioDAO {
         String sql = "UPDATE usuarios SET contrasenia = ?, req_cam_clave = TRUE "
                 + "WHERE lower(correo) = lower(?) AND estado = 'Activo'";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, ServicioCifrado.hashPassword(temporal));
+            ps.setString(1, ServicioCifrado.cifrarContrasenia(temporal));
             ps.setString(2, correo);
             return ps.executeUpdate() > 0 ? temporal : null;
         }
@@ -178,7 +185,7 @@ public class UsuarioDAO {
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, u.getCi());
                 ps.setString(2, u.getCorreo());
-                ps.setString(3, ServicioCifrado.hashPassword(clave));
+                ps.setString(3, ServicioCifrado.cifrarContrasenia(clave));
                 ps.setString(4, u.getNombre());
                 ps.setString(5, u.getApellido());
                 ps.setString(6, u.getNacionalidad());
@@ -287,7 +294,7 @@ public class UsuarioDAO {
         String sql = "UPDATE usuarios SET estado = 'Activo', contrasenia = ?, req_cam_clave = TRUE "
                 + "WHERE ci = ? AND estado = 'Inactivo'";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, ServicioCifrado.hashPassword(temporal));
+            ps.setString(1, ServicioCifrado.cifrarContrasenia(temporal));
             ps.setString(2, ci);
             return ps.executeUpdate() > 0 ? temporal : null;
         }

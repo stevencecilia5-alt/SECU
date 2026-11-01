@@ -51,6 +51,48 @@ class UsuarioServiceTest {
         assertEquals(UsuarioService.MSG_NO_COINCIDEN, ex.getMessage());
     }
 
+    @Test
+    @DisplayName("CU01: contraseña con ¿, € o un emoji se rechaza (el cifrado no los cubre); con ñ y tildes se acepta")
+    void contraseniaConCaracteresQueNoSeCifranSeRechaza() {
+        UsuarioService.validarNuevaContrasenia("contraseñaÁrbol1");   // no lanza: la ñ y las tildes se cifran
+        for (String clave : new String[]{"clave¿2026", "clave€2026", "clave\uD83D\uDE0026"}) {
+            DatoInvalidoException ex = assertThrows(DatoInvalidoException.class,
+                    () -> UsuarioService.validarNuevaContrasenia(clave));
+            assertEquals(UsuarioService.MSG_CARACTERES_CLAVE, ex.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("CU01 (Mockito): con la contraseña actual incorrecta no se cambia la contraseña")
+    void cambioConContraseniaActualIncorrectaSeRechaza() throws Exception {
+        // El Proxy simulado responde que la contraseña actual no es la vigente
+        SeguridadProxy proxy = mock(SeguridadProxy.class);
+        when(proxy.verificarContrasenia(any(), eq("Incorrecta1"))).thenReturn(false);
+        UsuarioService servicio = new UsuarioService(proxy);
+
+        DatoInvalidoException ex = assertThrows(DatoInvalidoException.class,
+                () -> servicio.cambiarContrasenia(DatosDePrueba.administrador(), "Incorrecta1", "Nueva2026", "Nueva2026"));
+
+        assertEquals(UsuarioService.MSG_ACTUAL_INCORRECTA, ex.getMessage());
+        verify(proxy, never()).cambiarContrasenia(any(), any());   // la contraseña no se cambió
+    }
+
+    @Test
+    @DisplayName("CU01 (Mockito): login con el correo o la contraseña vacíos se rechaza sin consultar la base")
+    void loginConCorreoOContraseniaVaciosSeRechaza() throws Exception {
+        SeguridadProxy proxy = mock(SeguridadProxy.class);
+        UsuarioService servicio = new UsuarioService(proxy);
+
+        DatoInvalidoException sinCorreo = assertThrows(DatoInvalidoException.class,
+                () -> servicio.autenticar("", "Proyecto2026!"));
+        DatoInvalidoException sinContrasenia = assertThrows(DatoInvalidoException.class,
+                () -> servicio.autenticar("admin@secu.edu.uy", ""));
+
+        assertEquals(UsuarioService.MSG_OBLIGATORIOS, sinCorreo.getMessage());
+        assertEquals(UsuarioService.MSG_OBLIGATORIOS, sinContrasenia.getMessage());
+        verify(proxy, never()).autenticar(any(), any());   // no llega a la base
+    }
+
     // ---------- CU03: datos de los usuarios ----------
 
     @Test

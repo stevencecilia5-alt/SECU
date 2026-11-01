@@ -80,33 +80,27 @@ public class MenuInicio extends MenuBase {
         }
     }
 
-    /** Cambio obligatorio tras ingresar con una contraseña temporal: se repite hasta que sea válida. */
+    /**
+     * Cambio obligatorio tras ingresar con una contraseña temporal: pide la nueva y su confirmación
+     * hasta que el servicio las acepte. Si la nueva no cumple la política, lo avisa antes de pedir
+     * la confirmación (Mantis #0044248: se vuelve a pedir el dato en lugar de cortar el flujo).
+     */
     private void forzarCambioClave(Usuario usuario) {
         System.out.println("\nIngresaste con una contraseña temporal. Debés definir una contraseña nueva para continuar.");
         while (true) {
+            String nueva = leerContrasenia("Nueva contraseña (mínimo 6 caracteres): ");
             try {
-                servicio.cambiarContrasenia(usuario, pedirNuevaContraseniaConfirmada());
-                usuario.setRequiereCambioClave(false);
+                UsuarioService.validarNuevaContrasenia(nueva);   // aviso temprano; el servicio vuelve a validar
+                servicio.definirContraseniaObligatoria(usuario, nueva, leerContrasenia("Confirmar contraseña: "));
                 System.out.println("¡Contraseña actualizada con éxito!");
                 return;
             } catch (AccesoDenegadoException | DatoInvalidoException ex) {
                 System.out.println(ex.getMessage());
+            } catch (OperacionNoPermitidaException ex) {
+                System.out.println(ex.getMessage());
+                return;                                          // no había un cambio pendiente
             } catch (ErrorDeDatosException ex) {
                 System.out.println("Error al actualizar la contraseña: " + ex.getMessage());
-            }
-        }
-    }
-
-    /** Pide la nueva contraseña y su confirmación, validando cada una apenas se ingresa. */
-    private String pedirNuevaContraseniaConfirmada() {
-        while (true) {
-            String nueva = leerContrasenia("Nueva contraseña (mínimo 6 caracteres): ");
-            try {
-                UsuarioService.validarNuevaContrasenia(nueva);
-                UsuarioService.validarConfirmacion(nueva, leerContrasenia("Confirmar contraseña: "));
-                return nueva;
-            } catch (DatoInvalidoException ex) {
-                System.out.println(ex.getMessage());
             }
         }
     }

@@ -68,18 +68,20 @@ public class MenuPrincipal extends MenuBase {
         return true;
     }
 
-    /** Ante cualquier error, informa y vuelve al menú sin cambios. */
+    /**
+     * Pide la contraseña actual y la verifica enseguida; después pide la nueva y su confirmación.
+     * El servicio vuelve a validar todo al cambiarla (CU01). Ante cualquier error, informa el
+     * motivo y vuelve al menú sin cambios.
+     */
     private void cambiarMiContrasenia() {
         System.out.println("\n--- Cambiar mi contraseña ---");
         try {
-            if (!servicio.verificarContraseniaActual(sesion, leerContrasenia("Contraseña actual: "))) {
-                System.out.println("La contraseña actual no es correcta.");
-                return;
-            }
+            String actual = leerContrasenia("Contraseña actual: ");
+            servicio.verificarContraseniaActual(sesion, actual);
             String nueva = leerContrasenia("Nueva contraseña (mínimo 6 caracteres): ");
-            UsuarioService.validarNuevaContrasenia(nueva);
-            UsuarioService.validarConfirmacion(nueva, leerContrasenia("Confirmar contraseña: "));
-            servicio.cambiarContrasenia(sesion, nueva);
+            UsuarioService.validarNuevaContrasenia(nueva);   // aviso temprano; el servicio vuelve a validar
+            String confirmacion = leerContrasenia("Confirmar contraseña: ");
+            servicio.cambiarContrasenia(sesion, actual, nueva, confirmacion);
             System.out.println("¡Contraseña actualizada con éxito!");
         } catch (AccesoDenegadoException | DatoInvalidoException | ErrorDeDatosException ex) {
             System.out.println(ex.getMessage());

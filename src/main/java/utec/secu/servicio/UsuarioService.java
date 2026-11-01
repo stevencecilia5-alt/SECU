@@ -5,6 +5,7 @@ import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Usuario;
 import utec.secu.seguridad.SeguridadProxy;
+import utec.secu.seguridad.ServicioCifrado;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -31,7 +32,12 @@ public class UsuarioService {
     // ---------- Mensajes (los mismos que esperan los casos de prueba) ----------
     public static final String MSG_OBLIGATORIOS = "El correo y la contraseña son campos obligatorios.";
     public static final String MSG_MINIMO_CLAVE = "La contraseña debe tener al menos 6 caracteres.";
+    public static final String MSG_CARACTERES_CLAVE = "La contraseña tiene caracteres que no se pueden usar: "
+            + "se admiten letras (también con tilde, ü o ñ), números, espacios y símbolos como ! @ # $ % & * ? - _ "
+            + "(no se admiten ¿, ¡, ç, €, emojis ni otros caracteres especiales).";
     public static final String MSG_NO_COINCIDEN = "Las contraseñas no coinciden.";
+    public static final String MSG_ACTUAL_INCORRECTA = "La contraseña actual no es correcta.";
+    public static final String MSG_SIN_CAMBIO_PENDIENTE = "No hay un cambio de contraseña obligatorio pendiente.";
     public static final String MSG_RECUPERACION = "Si el correo corresponde a un usuario activo, se generó "
             + "una nueva contraseña temporal y se envió al correo registrado.";
     public static final String MSG_NOMBRE = "El Nombre no es válido: debe tener entre 2 y 50 caracteres "
@@ -98,20 +104,56 @@ public class UsuarioService {
         }
     }
 
-    /** @return {@code true} si la contraseña indicada es la vigente del usuario en sesión. */
-    public boolean verificarContraseniaActual(Usuario sesion, String actual) {
+    /**
+     * Comprueba la contraseña actual del usuario en sesión (CU01). La consola la llama apenas se
+     * escribe, para avisar enseguida si es incorrecta.
+     *
+     * @throws DatoInvalidoException Si la contraseña actual no es correcta.
+     */
+    public void verificarContraseniaActual(Usuario sesion, String actual) {
         try {
-            return actual != null && !actual.isEmpty() && seguridadProxy.autenticar(sesion.getCorreo(), actual) != null;
+            if (actual == null || actual.isEmpty() || !seguridadProxy.verificarContrasenia(sesion, actual)) {
+                throw new DatoInvalidoException(MSG_ACTUAL_INCORRECTA);
+            }
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
         }
     }
 
-    /** Cambia la contraseña del usuario en sesión, aplicando la política de contraseñas. */
-    public void cambiarContrasenia(Usuario sesion, String nueva) {
+    /**
+     * Cambio de contraseña con sesión iniciada (CU01). Valida, en este orden, la contraseña actual,
+     * la política de contraseñas y la confirmación; si alguna no se cumple, no se cambia nada.
+     *
+     * @throws DatoInvalidoException Si la contraseña actual no es correcta, la nueva no cumple la
+     *                               política o no coincide con su confirmación.
+     */
+    public void cambiarContrasenia(Usuario sesion, String actual, String nueva, String confirmacion) {
+        verificarContraseniaActual(sesion, actual);
         try {
             validarNuevaContrasenia(nueva);
+            validarConfirmacion(nueva, confirmacion);
             seguridadProxy.cambiarContrasenia(sesion, nueva);
+        } catch (SQLException e) {
+            throw new ErrorDeDatosException(e);
+        }
+    }
+
+    /**
+     * Cambio obligatorio al ingresar con una contraseña temporal (CU01): no pide la actual, porque el
+     * usuario acaba de ingresar con ella, pero solo se permite si tiene el cambio pendiente.
+     *
+     * @throws OperacionNoPermitidaException Si el usuario no tiene un cambio de contraseña obligatorio pendiente.
+     * @throws DatoInvalidoException         Si la nueva no cumple la política o no coincide con su confirmación.
+     */
+    public void definirContraseniaObligatoria(Usuario sesion, String nueva, String confirmacion) {
+        try {
+            if (sesion != null && !sesion.isRequiereCambioClave()) {
+                throw new OperacionNoPermitidaException(MSG_SIN_CAMBIO_PENDIENTE);
+            }
+            validarNuevaContrasenia(nueva);
+            validarConfirmacion(nueva, confirmacion);
+            seguridadProxy.cambiarContrasenia(sesion, nueva);
+            sesion.setRequiereCambioClave(false);
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
         }
@@ -315,9 +357,17 @@ public class UsuarioService {
     // VALIDACIONES DE DATOS (también las usa la consola al pedir cada dato)
     // =========================================================================
 
+    /**
+     * Política de contraseñas: al menos 6 caracteres, no solo espacios, y solo caracteres que el
+     * cifrado transforma (letras, también con tilde, ü o ñ, números, espacios y los símbolos del teclado),
+     * para que la base guarde únicamente el valor cifrado (pauta de Programación).
+     */
     public static void validarNuevaContrasenia(String nueva) {
         if (nueva == null || nueva.isBlank() || nueva.length() < 6) {
             throw new DatoInvalidoException(MSG_MINIMO_CLAVE);
+        }
+        if (!ServicioCifrado.puedeCifrar(nueva)) {
+            throw new DatoInvalidoException(MSG_CARACTERES_CLAVE);
         }
     }
 

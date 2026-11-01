@@ -35,10 +35,11 @@ La solución sustituye circuitos administrativos dispersos mediante una arquitec
 El sistema cuenta con **3 módulos asignados desarrollados, integrados y operativos por consola Java**:
 
 1. **CU01 — Autenticación, Gestión de Sesión y Control de Acceso:**
-   * Inicio de sesión interactivo por consola mediante correo institucional y contraseña.
+   * Inicio de sesión interactivo por consola mediante correo institucional y contraseña. El correo no distingue mayúsculas.
    * Verificación de credenciales cifradas con el algoritmo propio de `ServicioCifrado` y validación de estado activo (`Activo` vs. `Inactivo`).
    * Detección del flag `req_cam_clave = TRUE` y redirección forzosa al flujo de cambio obligatorio de contraseña en el primer ingreso.
-   * Flujo de cambio voluntario de clave desde el menú principal (cada usuario gestiona exclusivamente su propia contraseña).
+   * Flujo de cambio voluntario de clave desde el menú principal (cada usuario gestiona exclusivamente su propia contraseña). La contraseña actual se verifica apenas se escribe, y el servicio vuelve a validar la actual, la política y la confirmación antes de guardar.
+   * Política de contraseñas: al menos 6 caracteres, no solo espacios, y solo letras (también con tilde, ü o ñ), números, espacios y los símbolos del teclado. El cifrado propio transforma los caracteres del teclado y las letras del español que no están en él (`ÁÉÍÓÚÜÑáéíóúüñ`); un carácter fuera de esos, como `¿`, `ç`, `€` o un emoji, se rechaza, así la base nunca guarda una parte en claro.
    * Despliegue dinámico de opciones del menú principal según el rol autenticado (`Administrador` vs. `Evaluador externo`).
 
 2. **CU03 — Gestión de Usuarios y Roles:**
@@ -101,9 +102,9 @@ Cada patrón resuelve una necesidad concreta de la aplicación:
 En cumplimiento de las especificaciones de la cátedra de Programación (2026):
 
 * **Clase responsable:** `utec.secu.seguridad.ServicioCifrado` (clase utilitaria final con constructor privado, desacoplada de la UI y los DAOs).
-* **Algoritmo propio y reversible, con clave:** cada carácter de la contraseña se desplaza según la letra de la clave que le toca (una frase, constante `CLAVE`). Con la misma clave, `descifrar(texto, clave)` recupera la contraseña original; con otra clave, no.
+* **Algoritmo propio y reversible, con clave:** cada carácter de la contraseña se desplaza según la letra de la clave que le toca (una frase, constante `CLAVE`), dentro de su grupo: los 95 caracteres del teclado o las 14 letras del español que no están en él (`ÁÉÍÓÚÜÑáéíóúüñ`, escritas en ese orden). Si la letra de la clave diera vueltas enteras al grupo, el carácter avanza uno, así ningún carácter queda igual. Con la misma clave, `descifrar(texto, clave)` recupera la contraseña original; con otra clave, no. Como los caracteres del teclado quedan dentro del teclado, una contraseña sin ñ ni tildes se cifra igual que en la Etapa 2.
 * **Justificación académica obligatoria:** Este mecanismo se implementa **únicamente con fines académicos** para ejercitar y evaluar el desarrollo de algoritmos propios en Java sin librerías externas que resuelvan completamente el proceso. En un entorno de producción real, este esquema se reemplaza por funciones de derivación criptográficamente seguras como BCrypt o Argon2 con salt aleatorio.
-* **Persistencia segura:** PostgreSQL almacena exclusivamente el valor cifrado en la columna `contrasenia` de la tabla `usuarios`. En ningún caso se persiste texto plano.
+* **Persistencia segura:** PostgreSQL almacena exclusivamente el valor cifrado en la columna `contrasenia` de la tabla `usuarios`. En ningún caso se persiste texto plano: la política de contraseñas rechaza los caracteres que el algoritmo no transforma (`ServicioCifrado.puedeCifrar`).
 * **Contraseñas con asteriscos:** al escribir una contraseña se muestran asteriscos (librería JLine, dependencia `org.jline:jline` del `pom.xml`). Funciona en una terminal real, como CMD o PowerShell al ejecutar el JAR (sección 8); en la consola Run de IntelliJ se ve lo que se escribe.
 * **Confidencialidad de credenciales:** Las contraseñas temporales se escriben exclusivamente en el archivo local `correos_simulados/bandeja_salida.txt` a través de `ServicioCorreo`. La carpeta `correos_simulados/` se encuentra excluida en `.gitignore` para garantizar que las claves no se suban al repositorio remoto de GitLab.
 
@@ -272,7 +273,7 @@ Las pruebas están en `src/test/java`, con la estructura estándar de Maven, y u
 * Las reglas que primero consultan datos (cédula ya registrada, tercer evaluador, etc.) se prueban con **Mockito**: la prueba crea un Proxy simulado con `mock(...)`, le indica qué devolver con `when(...).thenReturn(...)` y comprueba qué hizo el servicio con `verify(...)`. Para poder pasarle ese Proxy, `UsuarioService`, `PostulacionService` y `EvaluacionService` tienen un constructor de paquete que lo recibe; la aplicación usa el constructor público, que crea el Proxy real.
 * Con JDK 21, Mockito puede mostrar al ejecutar las pruebas un aviso que empieza con "Mockito is currently self-attaching…". Es solo un aviso: las pruebas se ejecutan igual.
 
-### Estructura (27 pruebas)
+### Estructura (31 pruebas)
 ```
 src/test/java/utec/secu/
 ├── conexion/
@@ -282,10 +283,10 @@ src/test/java/utec/secu/
 ├── modelo/
 │   └── EstadoPostulacionTest.java              # CU07: cambios de estado (2)
 ├── seguridad/
-│   └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (3)
+│   └── ServicioCifradoTest.java                # Cifrado de contraseñas con clave (4)
 └── servicio/
     ├── DatosDePrueba.java                      # Usuarios de ejemplo para las pruebas
-    ├── UsuarioServiceTest.java                 # CU01 y CU03 (7, una con Mockito)
+    ├── UsuarioServiceTest.java                 # CU01 y CU03 (10, tres con Mockito)
     ├── PostulacionServiceTest.java             # CU07: fechas y modificación (2, una con Mockito)
     ├── EvaluacionServiceTest.java              # CU08 y CU09 (7, tres con Mockito)
     ├── DocumentoServiceTest.java               # CU06: tamaño máximo de 10 MB (2)
@@ -295,11 +296,11 @@ src/test/java/utec/secu/
 ### Qué verifican
 | Módulo / componente | Pruebas | Reglas comprobadas |
 | :--- | :---: | :--- |
-| **CU01** | 3 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); confirmación igual a la nueva. |
+| **CU01** | 6 | Contraseña de al menos 6 caracteres (límite 5 y 6); no formada solo por espacios (Mantis #0044831); con `¿`, `€` o un emoji se rechaza y con ñ y tildes se acepta; confirmación igual a la nueva; con la contraseña actual incorrecta no se cambia nada y el login con el correo o la contraseña vacíos no llega a la base (estas dos con **Mockito**). |
 | **CU03** | 4 | Cédula con dígito verificador correcto e incorrecto; nombre de 2 a 50 caracteres (límite 1 y 2); cédula ya registrada en un alta (con **Mockito**: verifica además que no se guarde nada). |
 | **CU07** | 4 | Transición permitida y no permitida; un estado final ya no cambia; fecha inexistente, formato incorrecto y rango invertido; una postulación Evaluada no se modifica (**Mockito**). |
 | **CU08 y CU09** | 7 | Puntaje entero de 1 a 5 (inválidos y límites); puntaje total ponderado por sección; un Evaluador externo no puede asignar evaluadores (Proxy); no se asigna un tercer evaluador, no se reemplaza a un evaluador que ya empezó a evaluar y finalizar con criterios sin puntaje la deja En proceso (FAQ 4) (**Mockito**). |
-| **Seguridad y patrones** | 5 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
+| **Seguridad y patrones** | 6 | Cifrado: con la misma clave se recupera la contraseña y con otra clave no; la ñ y las tildes también se cifran; el valor cifrado coincide con el que cargan los scripts de la base; Singleton; Factory Method. |
 | **CU06 y CU11** (opcionales) | 4 | PDF de 10 MB exactos aceptado y de 10 MB más 1 byte rechazado; mover una postulación en el orden CES sin escribir el motivo; al moverla, las que quedan corridas reciben la observación automática. |
 
 Cada prueba con datos inválidos verifica también el mensaje de la excepción personalizada que ve el usuario en la consola.
