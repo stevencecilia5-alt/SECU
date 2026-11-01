@@ -1,4 +1,4 @@
-package utec.secu.servicio;
+package utec.secu.util;
 
 import utec.secu.excepciones.OperacionNoPermitidaException;
 

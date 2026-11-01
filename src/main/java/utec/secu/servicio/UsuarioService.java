@@ -5,7 +5,8 @@ import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
 import utec.secu.modelo.Usuario;
 import utec.secu.seguridad.SeguridadProxy;
-import utec.secu.seguridad.ServicioCifrado;
+import utec.secu.util.ServicioCifrado;
+import utec.secu.util.ServicioCorreo;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -61,7 +62,7 @@ public class UsuarioService {
             + "entre 6 y 20 dígitos.";
     public static final String MSG_NACIONALIDAD = "La Nacionalidad no es válida: elegí una opción de 1 a 5.";
     public static final String MSG_CALLE = "La Calle no es válida: debe tener entre 2 y 40 caracteres.";
-    public static final String MSG_NUMERO = "El Número no es válido: debe tener hasta 8 caracteres.";
+    public static final String MSG_NUMERO = "El Número no es válido: debe tener entre 1 y 8 caracteres.";
     public static final String MSG_ROL = "El Rol no es válido: elegí 1 o 2.";
     public static final String MSG_ESTADO = "El Estado no es válido: elegí 1 o 2.";
     public static final String MSG_NO_EXISTE = "No se encontró un usuario con esa cédula.";
@@ -447,25 +448,24 @@ public class UsuarioService {
         return correo;
     }
 
-    /** @return El teléfono, o cadena vacía si se dejó en blanco (es opcional). */
+    /** El teléfono es obligatorio (dato mínimo del CU03): solo números, con prefijo + opcional, de 6 a 20 dígitos. */
     public static String validarTelefono(String texto) {
-        String tel = texto == null ? "" : texto.trim();
-        return tel.isEmpty() ? "" : validar(tel, TELEFONO, MSG_TELEFONO);
+        return validar(texto, TELEFONO, MSG_TELEFONO);
     }
 
-    /** @return La calle, o cadena vacía si se dejó en blanco (es opcional). */
+    /** La calle es obligatoria (dato mínimo del CU03): de 2 a 40 caracteres. */
     public static String validarCalle(String texto) {
         String calle = texto == null ? "" : texto.trim();
-        if (!calle.isEmpty() && (calle.length() < 2 || calle.length() > 40)) {
+        if (calle.length() < 2 || calle.length() > 40) {
             throw new DatoInvalidoException(MSG_CALLE);
         }
         return calle;
     }
 
-    /** @return El número de puerta, o cadena vacía si se dejó en blanco (es opcional). */
+    /** El número de puerta es obligatorio: de 1 a 8 caracteres. */
     public static String validarNumero(String texto) {
         String numero = texto == null ? "" : texto.trim();
-        if (numero.length() > 8) {
+        if (numero.isEmpty() || numero.length() > 8) {
             throw new DatoInvalidoException(MSG_NUMERO);
         }
         return numero;

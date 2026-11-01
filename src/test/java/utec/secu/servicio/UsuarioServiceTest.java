@@ -122,6 +122,25 @@ class UsuarioServiceTest {
     }
 
     @Test
+    @DisplayName("CU03: teléfono, calle y número de puerta son obligatorios; el número tiene hasta 8 caracteres (valor límite)")
+    void telefonoCalleYNumeroSonObligatorios() {
+        DatoInvalidoException sinTelefono = assertThrows(DatoInvalidoException.class,
+                () -> UsuarioService.validarTelefono(""));
+        DatoInvalidoException sinCalle = assertThrows(DatoInvalidoException.class,
+                () -> UsuarioService.validarCalle(""));
+        DatoInvalidoException sinNumero = assertThrows(DatoInvalidoException.class,
+                () -> UsuarioService.validarNumero(""));
+        DatoInvalidoException numeroLargo = assertThrows(DatoInvalidoException.class,
+                () -> UsuarioService.validarNumero("123456789"));
+
+        assertEquals(UsuarioService.MSG_TELEFONO, sinTelefono.getMessage());
+        assertEquals(UsuarioService.MSG_CALLE, sinCalle.getMessage());
+        assertEquals(UsuarioService.MSG_NUMERO, sinNumero.getMessage());
+        assertEquals(UsuarioService.MSG_NUMERO, numeroLargo.getMessage());
+        assertEquals("12345678", UsuarioService.validarNumero("12345678"));
+    }
+
+    @Test
     @DisplayName("CU03 (Mockito): alta con una cédula ya registrada se rechaza y no se guarda nada")
     void altaConCedulaYaRegistradaSeRechaza() throws Exception {
         // El Proxy simulado responde que la cédula ya existe, sin consultar la base
@@ -162,7 +181,7 @@ class UsuarioServiceTest {
         when(proxy.tieneAsignaciones(any(), eq(evaluador.getCi()))).thenReturn(true);
         UsuarioService servicio = new UsuarioService(proxy);
         Usuario datos = new Usuario(evaluador.getCi(), evaluador.getCorreo(), "Lucía", "Fernández",
-                "Administrador", "Activo", false, "Uruguaya", null, null, null);
+                "Administrador", "Activo", false, "Uruguaya", "Colonia", "1022", "099123456");
 
         OperacionNoPermitidaException ex = assertThrows(OperacionNoPermitidaException.class,
                 () -> servicio.modificarUsuario(DatosDePrueba.administrador(), datos));

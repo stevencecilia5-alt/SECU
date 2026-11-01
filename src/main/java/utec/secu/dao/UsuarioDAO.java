@@ -3,7 +3,7 @@ package utec.secu.dao;
 import utec.secu.conexion.ConexionBD;
 import utec.secu.factory.PerfilUsuarioFactory;
 import utec.secu.modelo.Usuario;
-import utec.secu.seguridad.ServicioCifrado;
+import utec.secu.util.ServicioCifrado;
 
 import java.security.SecureRandom;
 import java.sql.Connection;

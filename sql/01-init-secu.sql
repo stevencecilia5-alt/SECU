@@ -132,8 +132,8 @@ CREATE TABLE Usuarios (
     nombre DOM_NOMBRE_PERSONA NOT NULL,
     apellido DOM_NOMBRE_PERSONA NOT NULL,
     nacionalidad DOM_NACIONALIDAD NOT NULL,
-    calle VARCHAR(40),
-    num_domicilio VARCHAR(8),
+    calle VARCHAR(40) NOT NULL CHECK (char_length(trim(calle)) BETWEEN 2 AND 40),
+    num_domicilio VARCHAR(8) NOT NULL CHECK (char_length(trim(num_domicilio)) BETWEEN 1 AND 8),
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
     rol VARCHAR(30) NOT NULL,
     req_cam_clave BOOLEAN NOT NULL DEFAULT TRUE,
@@ -727,19 +727,25 @@ CREATE UNIQUE INDEX UK_Conv_unica_publicada
 -- simple del valor cifrado va duplicada ('') porque asi se escribe en SQL.
 
 INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido,
-                      nacionalidad, estado, rol, req_cam_clave)
+                      nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
 VALUES ('40123450',
         'admin@secu.edu.uy',
         '2"w''u$YuC=BPA',
         'Administrador',
         'SECU',
         'Uruguaya',
+        'Avenida Italia',
+        '6201',
         'Activo',
         'Administrador',
         FALSE);
 
 INSERT INTO Administradores (id_usuario)
 SELECT id_usuario FROM Usuarios WHERE correo = 'admin@secu.edu.uy';
+
+-- Telefono: dato obligatorio del CU03, igual que la calle y el numero de puerta.
+INSERT INTO Tele_Usuarios (id_usuario, num_telefono)
+SELECT id_usuario, '26033012' FROM Usuarios WHERE correo = 'admin@secu.edu.uy';
 
 -- ---------- 7.2 Sedes (CU05) ----------
 

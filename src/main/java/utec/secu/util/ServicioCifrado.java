@@ -1,4 +1,4 @@
-package utec.secu.seguridad;
+package utec.secu.util;
 
 /**
  * Cifrado propio y reversible de las contraseñas, con una clave (pauta de Programación).
