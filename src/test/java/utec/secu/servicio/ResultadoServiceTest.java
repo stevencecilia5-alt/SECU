@@ -47,6 +47,19 @@ class ResultadoServiceTest {
                 + "postulación 12 al puesto 1.", corrida.getObservacionCes());
     }
 
+    @Test
+    @DisplayName("CU11: el servicio no guarda un orden con un puesto repetido")
+    void unOrdenConPuestoRepetidoSeRechaza() {
+        List<ResultadoPostulacion> orden = prelacion(9, 11, 12);
+        ResultadoService.cerrarOrdenCes(orden);
+        orden.get(2).setOrdenCes(1);   // dos postulaciones en el puesto 1
+
+        DatoInvalidoException ex = assertThrows(DatoInvalidoException.class,
+                () -> ResultadoService.validarOrdenCes(orden));
+
+        assertEquals(String.format(ResultadoService.MSG_ORDEN_INVALIDO, 3), ex.getMessage());
+    }
+
     /** Lista de prelación con las postulaciones indicadas, en ese orden calculado. */
     private static List<ResultadoPostulacion> prelacion(long... ids) {
         List<ResultadoPostulacion> lista = new ArrayList<>();

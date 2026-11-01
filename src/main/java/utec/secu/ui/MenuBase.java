@@ -24,6 +24,10 @@ import java.util.Scanner;
  */
 public abstract class MenuBase {
 
+    /** Mensaje ante un error que nadie previó: se informa y se vuelve al menú, sin cerrar la aplicación. */
+    static final String MSG_ERROR_INESPERADO =
+            "Ocurrió un error inesperado y la operación no se completó. Volvé a intentarlo.";
+
     protected final Scanner sc;
     protected final Usuario sesion;
 

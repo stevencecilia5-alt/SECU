@@ -237,12 +237,26 @@ public class PostulacionDAO {
      */
     public boolean cambiarEstado(long id, EstadoPostulacion actual, EstadoPostulacion nuevo) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
-        String sql = "UPDATE postulaciones SET estado = ? WHERE id_postulacion = ? AND estado = ?";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, nuevo.getValorBD());
-            ps.setLong(2, id);
-            ps.setString(3, actual.getValorBD());
-            return ps.executeUpdate() == 1;
+        con.setAutoCommit(false);      // empieza la transacción: nada se guarda todavía
+        try {
+            boolean cambiado;
+            try (PreparedStatement ps = con.prepareStatement(
+                    "UPDATE postulaciones SET estado = ? WHERE id_postulacion = ? AND estado = ?")) {
+                ps.setString(1, nuevo.getValorBD());
+                ps.setLong(2, id);
+                ps.setString(3, actual.getValorBD());
+                cambiado = ps.executeUpdate() == 1;
+            }
+            if (cambiado && actual == EstadoPostulacion.EVALUADA && nuevo == EstadoPostulacion.CANCELADA) {
+                ResultadoDAO.quitarDePrelacion(con, id);
+            }
+            con.commit();              // todo salió bien: se guarda todo junto
+            return cambiado;
+        } catch (SQLException ex) {
+            con.rollback();            // algo falló: se deshace todo
+            throw ex;
+        } finally {
+            con.setAutoCommit(true);   // la conexión vuelve a guardar cada consulta sola
         }
     }
 

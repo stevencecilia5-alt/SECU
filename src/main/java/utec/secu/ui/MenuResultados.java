@@ -86,6 +86,9 @@ public class MenuResultados extends MenuBase {
         }
         if (!ResultadoService.tieneOrdenCes(prelacion)) {
             System.out.println("Todavía no se registró el orden final CES.");
+        } else if (ResultadoService.quedoConHuecos(prelacion)) {
+            System.out.println("Se canceló una postulación después de registrar el orden final CES. "
+                    + "Para renumerar la lista, registrá de nuevo el orden final CES.");
         }
     }
 

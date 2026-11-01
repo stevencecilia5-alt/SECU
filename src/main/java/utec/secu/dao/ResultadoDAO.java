@@ -35,6 +35,9 @@ public class ResultadoDAO {
      */
     private static final String ORDEN_PRELACION =
             " ORDER BY p.pun_consolidado DESC NULLS LAST, pt.nombre, pt.apellido, p.id_postulacion";
+    /** Orden de la vista consolidada (CU12): el de prelación, con las canceladas al final. */
+    private static final String ORDEN_VISTA =
+            " ORDER BY p.estado = ?, p.pun_consolidado DESC NULLS LAST, pt.nombre, pt.apellido, p.id_postulacion";
 
     /** @return Las convocatorias (id y nombre con su estado), de la más reciente a la más antigua. */
     public Map<Long, String> listarConvocatorias() throws SQLException {
@@ -53,7 +56,7 @@ public class ResultadoDAO {
 
     /**
      * Lista todas las postulaciones de una convocatoria con sus evaluaciones, ordenadas por
-     * puntaje consolidado (orden de prelación).
+     * puntaje consolidado (orden de prelación); las canceladas van al final.
      */
     public List<ResultadoPostulacion> listarResultados(long idConvocatoria) throws SQLException {
         Connection con = ConexionBD.getInstancia().getConnection();
@@ -70,10 +73,11 @@ public class ResultadoDAO {
                 + "LEFT JOIN tuto_utec_postulacion cp ON cp.id_postulacion = p.id_postulacion "
                 + "AND cp.rol_tutor = 'Co-tutor' "
                 + "LEFT JOIN tuto_utec ct ON ct.id_tuto_utec = cp.id_tuto_utec "
-                + "WHERE p.id_convocatoria = ?" + ORDEN_PRELACION;
+                + "WHERE p.id_convocatoria = ?" + ORDEN_VISTA;
         Map<Long, ResultadoPostulacion> resultados = new LinkedHashMap<>();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, idConvocatoria);
+            ps.setString(2, EstadoPostulacion.CANCELADA.getValorBD());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     ResultadoPostulacion r = mapear(rs);
@@ -147,16 +151,32 @@ public class ResultadoDAO {
                 idConvocatoria = rs.getLong("id_convocatoria");
             }
         }
-        boolean tieneOrdenCes;
+        if (!tieneOrdenCes(con, idConvocatoria)) {
+            recalcularOrden(con, idConvocatoria);
+        }
+    }
+
+    /**
+     * Saca de la prelación una postulación Evaluada que se canceló (CU07): borra su orden calculado,
+     * su puesto CES y su observación CES. Si la convocatoria no tiene orden CES, renumera el orden
+     * calculado de las demás; si lo tiene, las demás conservan su puesto hasta que se registre de
+     * nuevo el orden final CES (CU11), igual que cuando se evalúa una postulación después del CES.
+     * <p>
+     * La llama {@link PostulacionDAO#cambiarEstado} dentro de su transacción, con la misma conexión.
+     * </p>
+     */
+    static void quitarDePrelacion(Connection con, long idPostulacion) throws SQLException {
+        long idConvocatoria;
         try (PreparedStatement ps = con.prepareStatement(
-                "SELECT count(*) FROM postulaciones WHERE id_convocatoria = ? AND ord_final_ces IS NOT NULL")) {
-            ps.setLong(1, idConvocatoria);
+                "UPDATE postulaciones SET ord_pre_calculado = NULL, ord_final_ces = NULL, obs_ces = NULL "
+                + "WHERE id_postulacion = ? RETURNING id_convocatoria")) {
+            ps.setLong(1, idPostulacion);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                tieneOrdenCes = rs.getInt(1) > 0;
+                idConvocatoria = rs.getLong("id_convocatoria");
             }
         }
-        if (!tieneOrdenCes) {
+        if (!tieneOrdenCes(con, idConvocatoria)) {
             recalcularOrden(con, idConvocatoria);
         }
     }
@@ -165,17 +185,31 @@ public class ResultadoDAO {
     // AUXILIARES
     // =========================================================================
 
+    /** @return {@code true} si la convocatoria ya tiene registrado el orden final CES. */
+    private static boolean tieneOrdenCes(Connection con, long idConvocatoria) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement(
+                "SELECT count(*) FROM postulaciones WHERE id_convocatoria = ? AND ord_final_ces IS NOT NULL")) {
+            ps.setLong(1, idConvocatoria);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        }
+    }
+
     /**
      * Numera de 1 en adelante las postulaciones de la convocatoria que tienen puntaje
-     * consolidado, según {@link #ORDEN_PRELACION}, y guarda ese número como orden calculado.
+     * consolidado y no están canceladas, según {@link #ORDEN_PRELACION}, y guarda ese número
+     * como orden calculado.
      */
     private static void recalcularOrden(Connection con, long idConvocatoria) throws SQLException {
         List<Long> orden = new ArrayList<>();
         String sql = "SELECT p.id_postulacion FROM postulaciones p "
                 + "JOIN postulantes pt ON pt.id_postulante = p.id_postulante "
-                + "WHERE p.id_convocatoria = ? AND p.pun_consolidado IS NOT NULL" + ORDEN_PRELACION;
+                + "WHERE p.id_convocatoria = ? AND p.pun_consolidado IS NOT NULL AND p.estado <> ?" + ORDEN_PRELACION;
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, idConvocatoria);
+            ps.setString(2, EstadoPostulacion.CANCELADA.getValorBD());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     orden.add(rs.getLong("id_postulacion"));

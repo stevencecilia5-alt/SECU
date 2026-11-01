@@ -6,6 +6,7 @@ import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.modelo.Usuario;
 import utec.secu.servicio.UsuarioService;
 
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 /**
@@ -24,15 +25,24 @@ public class MenuPrincipal extends MenuBase {
         this.servicio = servicio;
     }
 
-    /** Muestra el menú hasta que el usuario cierra sesión. */
+    /**
+     * Muestra el menú hasta que el usuario cierra sesión. Si una opción falla por un error que nadie
+     * previó, lo informa y vuelve a este menú en lugar de cerrar la aplicación.
+     */
     public void mostrar() {
         boolean sesionActiva = true;
         while (sesionActiva) {
             System.out.println("\n--- Menú principal ---");
             System.out.println("Bienvenido/a, " + sesion.getNombre() + " " + sesion.getApellido()
                     + " (" + sesion.getRol() + ")");
-            sesionActiva = "Administrador".equalsIgnoreCase(sesion.getRol())
-                    ? opcionesAdministrador() : opcionesEvaluador();
+            try {
+                sesionActiva = "Administrador".equalsIgnoreCase(sesion.getRol())
+                        ? opcionesAdministrador() : opcionesEvaluador();
+            } catch (NoSuchElementException ex) {
+                throw ex;                                   // se cerró la entrada: termina en Main
+            } catch (RuntimeException ex) {
+                System.out.println(MSG_ERROR_INESPERADO);   // cualquier otro error: vuelve al menú
+            }
         }
     }
 

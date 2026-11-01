@@ -18,6 +18,12 @@ class EstadoPostulacionTest {
     }
 
     @Test
+    @DisplayName("CU07: una postulación Evaluada se puede cancelar (cancelación recibida fuera del sistema)")
+    void evaluadaPuedePasarACancelada() {
+        assertTrue(EstadoPostulacion.EVALUADA.transicionesManuales().contains(EstadoPostulacion.CANCELADA));
+    }
+
+    @Test
     @DisplayName("CU07: Registrada no puede pasar directo a Aprobada, y un estado final ya no cambia")
     void registradaNoPuedePasarAAprobada() {
         assertFalse(EstadoPostulacion.REGISTRADA.transicionesManuales().contains(EstadoPostulacion.APROBADA));

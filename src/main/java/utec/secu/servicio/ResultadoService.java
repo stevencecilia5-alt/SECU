@@ -3,6 +3,7 @@ package utec.secu.servicio;
 import utec.secu.excepciones.DatoInvalidoException;
 import utec.secu.excepciones.ErrorDeDatosException;
 import utec.secu.excepciones.OperacionNoPermitidaException;
+import utec.secu.modelo.EstadoPostulacion;
 import utec.secu.modelo.Evaluacion;
 import utec.secu.modelo.ResultadoPostulacion;
 import utec.secu.modelo.Usuario;
@@ -56,6 +57,10 @@ public class ResultadoService {
     public static final String MSG_POSICION = "La posición no es válida: debe ser un número entero de 1 a ";
     public static final String MSG_OBSERVACION =
             "La observación es obligatoria: escribí el motivo de la decisión del CES.";
+    public static final String MSG_ORDEN_INVALIDO =
+            "El orden final CES no es válido: cada puesto de 1 a %d tiene que estar asignado una sola vez.";
+    public static final String MSG_FALTA_OBSERVACION =
+            "Falta la observación de la postulación %d: su puesto final difiere del orden calculado.";
     public static final String MSG_FALLA_EXPORTAR = "No se pudo generar el archivo para Excel. Intentá nuevamente.";
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -107,14 +112,15 @@ public class ResultadoService {
     }
 
     /**
-     * @return La lista de prelación: las postulaciones con puntaje consolidado, en el orden calculado (CU11).
+     * @return La lista de prelación: las postulaciones con puntaje consolidado que no están canceladas,
+     *         en el orden calculado (CU11).
      * @throws OperacionNoPermitidaException Si ninguna postulación de la convocatoria está Evaluada.
      */
     public List<ResultadoPostulacion> listarPrelacion(Usuario sesion, long idConvocatoria) {
         try {
             List<ResultadoPostulacion> prelacion = new ArrayList<>();
             for (ResultadoPostulacion r : proxy.listarResultados(sesion, idConvocatoria)) {
-                if (r.getPuntajeConsolidado() != null) {
+                if (r.getPuntajeConsolidado() != null && r.getEstado() != EstadoPostulacion.CANCELADA) {
                     prelacion.add(r);
                 }
             }
@@ -130,6 +136,29 @@ public class ResultadoService {
     // =========================================================================
     // 2. ORDEN FINAL CES (CU11)
     // =========================================================================
+
+    /**
+     * @return {@code true} si hay un orden final CES registrado y le falta algún puesto calculado
+     *         del 1 al N, porque se canceló una postulación después de registrarlo.
+     */
+    public static boolean quedoConHuecos(List<ResultadoPostulacion> prelacion) {
+        boolean[] ocupado = new boolean[prelacion.size() + 1];
+        for (ResultadoPostulacion r : prelacion) {
+            Integer orden = r.getOrdenCalculado();
+            if (orden == null || r.getOrdenCes() == null) {
+                return false;   // sin orden CES, o con una evaluada después: lo informa otro aviso
+            }
+            if (orden >= 1 && orden <= prelacion.size()) {
+                ocupado[orden] = true;
+            }
+        }
+        for (int i = 1; i <= prelacion.size(); i++) {
+            if (!ocupado[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /** @return {@code true} si ya hay un orden final CES registrado para esa lista. */
     public static boolean tieneOrdenCes(List<ResultadoPostulacion> prelacion) {
@@ -246,13 +275,38 @@ public class ResultadoService {
 
     /**
      * Registra el orden final CES de la convocatoria, ya cerrado con {@link #cerrarOrdenCes}.
-     * El orden calculado por SECU se guarda aparte y no se sobrescribe.
+     * El orden calculado por SECU se guarda aparte y no se sobrescribe. Antes de guardar vuelve a
+     * controlar las reglas del CU11, para no depender del menú.
+     *
+     * @throws DatoInvalidoException Si hay puestos repetidos o sin asignar, o falta una observación.
      */
     public void registrarOrdenCes(Usuario sesion, long idConvocatoria, List<ResultadoPostulacion> orden) {
+        validarOrdenCes(orden);
         try {
             proxy.registrarOrdenCes(sesion, idConvocatoria, orden);
         } catch (SQLException e) {
             throw new ErrorDeDatosException(e);
+        }
+    }
+
+    /**
+     * Reglas del CU11: cada puesto de 1 a N está una sola vez, y si el puesto final difiere del
+     * orden calculado, la postulación tiene observación.
+     *
+     * @throws DatoInvalidoException Si alguna regla no se cumple.
+     */
+    static void validarOrdenCes(List<ResultadoPostulacion> orden) {
+        boolean[] ocupado = new boolean[orden.size() + 1];
+        for (ResultadoPostulacion r : orden) {
+            Integer puesto = r.getOrdenCes();
+            if (puesto == null || puesto < 1 || puesto > orden.size() || ocupado[puesto]) {
+                throw new DatoInvalidoException(String.format(MSG_ORDEN_INVALIDO, orden.size()));
+            }
+            ocupado[puesto] = true;
+            String observacion = r.getObservacionCes();
+            if (!puesto.equals(r.getOrdenCalculado()) && (observacion == null || observacion.isBlank())) {
+                throw new DatoInvalidoException(String.format(MSG_FALTA_OBSERVACION, r.getIdPostulacion()));
+            }
         }
     }
 
