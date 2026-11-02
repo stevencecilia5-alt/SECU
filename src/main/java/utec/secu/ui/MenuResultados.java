@@ -116,7 +116,7 @@ public class MenuResultados extends MenuBase {
         while (armando) {
             System.out.println("\nOrden final CES - " + convocatorias.get(id));
             imprimirArmado(orden, anteriores);
-            System.out.println("\n1. Mover una postulación");
+            System.out.println("\n1. Cambiar el puesto de una postulación");
             System.out.println("2. Agregar una observación");
             System.out.println("3. Volver al orden calculado");
             System.out.println("4. Confirmar y guardar");

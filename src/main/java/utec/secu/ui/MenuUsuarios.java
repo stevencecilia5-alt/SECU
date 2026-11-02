@@ -27,6 +27,7 @@ public class MenuUsuarios extends MenuBase {
             "Nacionalidad: 1) Uruguaya 2) Argentina 3) Brasileña 4) Chilena 5) Paraguaya";
     private static final String LISTA_ROLES = "Rol: 1) Administrador 2) Evaluador externo";
     private static final String LISTA_ESTADOS = "Estado: 1) Activo 2) Inactivo";
+    private static final String MSG_ALTA_CANCELADA = "Alta cancelada: no se guardó el usuario.";
 
     private final UsuarioService servicio;
 
@@ -87,16 +88,17 @@ public class MenuUsuarios extends MenuBase {
 
     private void crear() {
         System.out.println("\n--- Nuevo usuario ---");
+        System.out.println("(Presioná Enter en cualquier dato para cancelar el alta)");
         ciEnEdicion = null;
         String nombre = pedirDato("Nombre: ", "nombre", null);
         String apellido = pedirDato("Apellido: ", "apellido", null);
         String ci = pedirDato("Cédula: ", "cedula", null);
         String correo = pedirDato("Correo: ", "correo", null);
-        String telefono = pedirDato("Teléfono (opcional): ", "telefono", null);
+        String telefono = pedirDato("Teléfono: ", "telefono", null);
         System.out.println(LISTA_NACIONALIDADES);
         String nacionalidad = pedirDato("Elegí una opción: ", "nacionalidad", null);
-        String calle = pedirDato("Calle (opcional): ", "calle", null);
-        String numero = pedirDato("Número (opcional): ", "numero", null);
+        String calle = pedirDato("Calle: ", "calle", null);
+        String numero = pedirDato("Número: ", "numero", null);
         System.out.println(LISTA_ROLES);
         String rol = pedirDato("Elegí una opción: ", "rol", null);
         System.out.println(LISTA_ESTADOS);
@@ -122,13 +124,14 @@ public class MenuUsuarios extends MenuBase {
         String apellido = pedirDato("Apellido [" + actual.getApellido() + "]: ", "apellido", actual.getApellido());
         String correo = pedirDato("Correo [" + actual.getCorreo() + "]: ", "correo", actual.getCorreo());
         String telefono = pedirDato("Teléfono [" + textoOVacio(actual.getTelefono()) + "]: ",
-                "telefono", actual.getTelefono());
+                "telefono", textoOVacio(actual.getTelefono()));
         System.out.println(LISTA_NACIONALIDADES);
         String nacionalidad = pedirDato("Nacionalidad [" + actual.getNacionalidad() + "]: ",
                 "nacionalidad", actual.getNacionalidad());
-        String calle = pedirDato("Calle [" + textoOVacio(actual.getCalle()) + "]: ", "calle", actual.getCalle());
+        String calle = pedirDato("Calle [" + textoOVacio(actual.getCalle()) + "]: ",
+                "calle", textoOVacio(actual.getCalle()));
         String numero = pedirDato("Número [" + textoOVacio(actual.getNumDomicilio()) + "]: ",
-                "numero", actual.getNumDomicilio());
+                "numero", textoOVacio(actual.getNumDomicilio()));
         System.out.println(LISTA_ROLES);
         String rol = pedirRol(actual);
 
@@ -202,13 +205,17 @@ public class MenuUsuarios extends MenuBase {
      * @param mensaje Texto que se muestra al pedir el dato.
      * @param campo   Qué dato es: "nombre", "apellido", "cedula", "correo", "telefono",
      *                "calle", "numero", "nacionalidad", "rol" o "estado".
-     * @param actual  Valor actual al modificar (Enter lo conserva), o null en un alta.
+     * @param actual  Valor actual al modificar (Enter lo conserva), o null en un alta (Enter cancela el alta).
      * @return El dato válido.
+     * @throws OperacionNoPermitidaException Si en el alta se presiona Enter: el menú informa que se canceló.
      */
     private String pedirDato(String mensaje, String campo, String actual) {
         while (true) {
             String valor = leer(mensaje);
-            if (actual != null && valor.isBlank()) {
+            if (valor.isBlank() && actual == null) {
+                throw new OperacionNoPermitidaException(MSG_ALTA_CANCELADA);   // en el alta, Enter cancela
+            }
+            if (valor.isBlank() && !actual.isBlank()) {
                 return actual;                  // al modificar, Enter conserva el valor actual
             }
             try {

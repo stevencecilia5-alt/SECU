@@ -12,23 +12,23 @@ BEGIN;
 
 -- ---------- 1. Usuarios evaluadores ----------
 -- Evaluador con evaluaciones en los tres estados
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('37125485', 'eval1@utec.edu.uy', '2"w''u$YuC=BPA', 'Martín', 'Rodríguez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('37125485', 'eval1@utec.edu.uy', '2"w''u$YuC=BPA', 'Martín', 'Rodríguez', 'Uruguaya', 'Rivera', '2547', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador; tiene la evaluación En proceso
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('39451204', 'eval2@utec.edu.uy', '2"w''u$YuC=BPA', 'Lucía', 'Fernández', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('39451204', 'eval2@utec.edu.uy', '2"w''u$YuC=BPA', 'Lucía', 'Fernández', 'Uruguaya', '18 de Julio', '1360', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador; tercer evaluador disponible
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('40873164', 'eval3@utec.edu.uy', '2"w''u$YuC=BPA', 'Diego', 'Silva', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('40873164', 'eval3@utec.edu.uy', '2"w''u$YuC=BPA', 'Diego', 'Silva', 'Uruguaya', 'Colonia', '1022', 'Activo', 'Evaluador externo', FALSE);
 -- Evaluador Inactivo
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('35988423', 'eval4@utec.edu.uy', '2"w''u$YuC=BPA', 'Sofía', 'Pereira', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('35988423', 'eval4@utec.edu.uy', '2"w''u$YuC=BPA', 'Sofía', 'Pereira', 'Uruguaya', 'Agraciada', '3415', 'Inactivo', 'Evaluador externo', FALSE);
 -- Cédula y correo ya registrados (CU03)
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('38765418', 'ana.gomez@utec.edu.uy', '2"w''u$YuC=BPA', 'Ana', 'Gómez', 'Uruguaya', 'Activo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('38765418', 'ana.gomez@utec.edu.uy', '2"w''u$YuC=BPA', 'Ana', 'Gómez', 'Uruguaya', 'Bulevar Artigas', '1550', 'Activo', 'Evaluador externo', FALSE);
 -- Usuario Inactivo para restablecer y reactivar (CU03)
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('36543286', 'carla.diaz@utec.edu.uy', '2"w''u$YuC=BPA', 'Carla', 'Díaz', 'Uruguaya', 'Inactivo', 'Evaluador externo', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('36543286', 'carla.diaz@utec.edu.uy', '2"w''u$YuC=BPA', 'Carla', 'Díaz', 'Uruguaya', 'Canelones', '2201', 'Inactivo', 'Evaluador externo', FALSE);
 
 INSERT INTO Eval_Externos (id_usuario)
 SELECT id_usuario FROM Usuarios WHERE rol = 'Evaluador externo';
@@ -39,10 +39,23 @@ SELECT id_usuario, '099123456' FROM Usuarios WHERE correo = 'eval1@utec.edu.uy';
 -- ---------- 1b. Segundo Administrador ----------
 -- Sin convocatorias a su cargo: con él se prueba que no se cambia el rol de un
 -- Administrador que tiene convocatorias (CU03).
-INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, estado, rol, req_cam_clave)
-VALUES ('45123784', 'admin2@secu.edu.uy', '2"w''u$YuC=BPA', 'Paula', 'Núñez', 'Uruguaya', 'Activo', 'Administrador', FALSE);
+INSERT INTO Usuarios (ci, correo, contrasenia, nombre, apellido, nacionalidad, calle, num_domicilio, estado, rol, req_cam_clave)
+VALUES ('45123784', 'admin2@secu.edu.uy', '2"w''u$YuC=BPA', 'Paula', 'Núñez', 'Uruguaya', 'Mercedes', '1875', 'Activo', 'Administrador', FALSE);
 INSERT INTO Administradores (id_usuario)
 SELECT id_usuario FROM Usuarios WHERE correo = 'admin2@secu.edu.uy';
+
+-- ---------- 1c. Teléfono (dato obligatorio del CU03, igual que la calle y el número de puerta) ----------
+INSERT INTO Tele_Usuarios (id_usuario, num_telefono)
+SELECT u.id_usuario, v.telefono
+FROM Usuarios u
+JOIN (VALUES
+    ('39451204', '098456123'),
+    ('40873164', '097321654'),
+    ('35988423', '094789321'),
+    ('38765418', '099654987'),
+    ('36543286', '091234567'),
+    ('45123784', '092345678')
+) AS v(ci, telefono) ON u.ci = v.ci;
 
 -- ---------- 2. Convocatorias ----------
 -- La primera tiene postulaciones en todos los estados; la segunda no tiene ninguna (CU12).

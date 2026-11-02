@@ -1,4 +1,4 @@
-package utec.secu.seguridad;
+package utec.secu.util;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
